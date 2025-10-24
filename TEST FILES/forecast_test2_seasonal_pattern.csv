@@ -1,0 +1,26 @@
+Transaction_Date,Revenue,Item_Category,Store_Location
+2024-01-01,5000,Electronics,Main Store
+2024-01-15,8000,Electronics,Main Store
+2024-02-01,12000,Electronics,Main Store
+2024-02-15,15000,Electronics,Main Store
+2024-03-01,18000,Electronics,Main Store
+2024-03-15,22000,Electronics,Main Store
+2024-04-01,25000,Electronics,Main Store
+2024-04-15,28000,Electronics,Main Store
+2024-05-01,32000,Electronics,Main Store
+2024-05-15,35000,Electronics,Main Store
+2024-06-01,38000,Electronics,Main Store
+2024-06-15,42000,Electronics,Main Store
+2024-07-01,45000,Electronics,Main Store
+2024-07-15,48000,Electronics,Main Store
+2024-08-01,52000,Electronics,Main Store
+2024-08-15,55000,Electronics,Main Store
+2024-09-01,58000,Electronics,Main Store
+2024-09-15,62000,Electronics,Main Store
+2024-10-01,65000,Electronics,Main Store
+2024-10-15,68000,Electronics,Main Store
+2024-11-01,72000,Electronics,Main Store
+2024-11-15,75000,Electronics,Main Store
+2024-12-01,80000,Electronics,Main Store
+2024-12-15,85000,Electronics,Main Store
+2024-12-31,90000,Electronics,Main Store

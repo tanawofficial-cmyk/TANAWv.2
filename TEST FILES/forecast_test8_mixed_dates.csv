@@ -1,0 +1,11 @@
+Transaction_Time,Sales_Value,Product
+01/15/2024,15000,Product A
+2024-02-01,18000,Product B
+15-Mar-2024,22000,Product A
+2024/04/01,19000,Product B
+May 1, 2024,25000,Product A
+2024-06-15,21000,Product B
+07/01/2024,28000,Product A
+2024-08-01,24000,Product B
+Sep 15, 2024,30000,Product A
+2024-10-01,26000,Product B

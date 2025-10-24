@@ -1,0 +1,17 @@
+Item,TransactionDt,Val,Loc,Cnt
+Widget-Alpha,2024-01-05,125000,HQ,45
+Widget-Beta,2024-01-18,85000,Branch-A,32
+Widget-Gamma,2024-02-02,195000,HQ,67
+Widget-Delta,2024-02-21,142000,Branch-B,51
+Widget-Epsilon,2024-03-10,178000,HQ,58
+Widget-Zeta,2024-04-03,165000,Branch-A,49
+Widget-Eta,2024-04-29,210000,HQ,72
+Widget-Theta,2024-05-15,188000,Branch-B,63
+Widget-Iota,2024-06-08,225000,HQ,81
+Widget-Kappa,2024-07-01,198000,Branch-A,68
+Widget-Lambda,2024-07-22,215000,Branch-B,74
+Widget-Mu,2024-08-14,235000,HQ,87
+Widget-Nu,2024-09-05,205000,Branch-A,71
+Widget-Xi,2024-09-28,245000,HQ,92
+Widget-Omicron,2024-10-20,255000,Branch-B,96
+

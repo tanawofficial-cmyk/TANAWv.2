@@ -1,0 +1,56 @@
+[
+  {
+    "field": "Date",
+    "desc": "Customer registration date or interaction date",
+    "canonical_type": "date",
+    "role": "timestamp"
+  },
+  {
+    "field": "Customer",
+    "desc": "Customer name or customer identifier",
+    "canonical_type": "text",
+    "role": "attribute"
+  },
+  {
+    "field": "Email",
+    "desc": "Customer email address",
+    "canonical_type": "text",
+    "role": "attribute"
+  },
+  {
+    "field": "Phone",
+    "desc": "Customer phone number",
+    "canonical_type": "text",
+    "role": "attribute"
+  },
+  {
+    "field": "Address",
+    "desc": "Customer address or location",
+    "canonical_type": "text",
+    "role": "attribute"
+  },
+  {
+    "field": "Region",
+    "desc": "Customer geographic region or area",
+    "canonical_type": "text",
+    "role": "attribute"
+  },
+  {
+    "field": "Segment",
+    "desc": "Customer segment or category",
+    "canonical_type": "text",
+    "role": "attribute"
+  },
+  {
+    "field": "Lifetime_Value",
+    "desc": "Customer lifetime value or total spend",
+    "canonical_type": "numeric",
+    "role": "metric"
+  },
+  {
+    "field": "Purchase_Count",
+    "desc": "Number of purchases or transactions",
+    "canonical_type": "numeric",
+    "role": "metric"
+  }
+]

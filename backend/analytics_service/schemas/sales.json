@@ -1,0 +1,50 @@
+[
+  {
+    "field": "Date",
+    "desc": "Transaction, order, or sale date for time series analysis",
+    "canonical_type": "date",
+    "role": "timestamp"
+  },
+  {
+    "field": "Sales",
+    "desc": "Total sales revenue or monetary value from transactions",
+    "canonical_type": "numeric",
+    "role": "metric"
+  },
+  {
+    "field": "Amount",
+    "desc": "Monetary total or transaction amount",
+    "canonical_type": "numeric",
+    "role": "metric"
+  },
+  {
+    "field": "Quantity",
+    "desc": "Units sold or quantity of items in transaction",
+    "canonical_type": "numeric",
+    "role": "metric"
+  },
+  {
+    "field": "Product",
+    "desc": "Product name, code, or identifier",
+    "canonical_type": "text",
+    "role": "attribute"
+  },
+  {
+    "field": "Region",
+    "desc": "Sales area, branch, or geographic location",
+    "canonical_type": "text",
+    "role": "attribute"
+  },
+  {
+    "field": "Customer",
+    "desc": "Customer name or identifier",
+    "canonical_type": "text",
+    "role": "attribute"
+  },
+  {
+    "field": "Transaction_ID",
+    "desc": "Unique transaction or order identifier",
+    "canonical_type": "text",
+    "role": "identifier"
+  }
+]
