@@ -1,0 +1,22 @@
+Account_Name,Transaction_Date,Balance,Department,Expense,Profit_Margin
+Marketing Operations,2024-01-15,125000.50,Marketing,45000.00,18.5
+Sales Department,2024-01-16,200000.75,Sales,30000.00,32.8
+IT Infrastructure,2024-01-17,85000.25,Technology,55000.00,15.2
+Human Resources,2024-01-18,45000.00,People Operations,12000.00,24.5
+Research & Development,2024-01-19,175000.30,Technology,65000.00,28.9
+Operations Management,2024-01-20,150000.60,Operations,42000.00,21.7
+Legal Services,2024-01-21,60000.00,Legal,18000.00,35.2
+Finance Department,2024-01-22,95000.45,Finance,25000.00,26.4
+Customer Support,2024-01-23,70000.80,Operations,20000.00,22.1
+Product Development,2024-01-24,185000.90,Technology,68000.00,29.5
+Marketing Analytics,2024-02-01,110000.00,Marketing,38000.00,19.8
+Sales Operations,2024-02-02,195000.50,Sales,28000.00,34.2
+IT Security,2024-02-03,78000.75,Technology,48000.00,16.5
+Recruitment,2024-02-04,52000.30,People Operations,15000.00,25.8
+Innovation Lab,2024-02-05,165000.00,Technology,58000.00,27.3
+Supply Chain,2024-02-06,142000.50,Operations,40000.00,23.1
+Compliance,2024-02-07,55000.25,Legal,16000.00,33.5
+Accounting,2024-02-08,88000.60,Finance,22000.00,28.7
+Client Services,2024-02-09,75000.40,Operations,21000.00,24.6
+Engineering,2024-02-10,190000.80,Technology,70000.00,31.2
+

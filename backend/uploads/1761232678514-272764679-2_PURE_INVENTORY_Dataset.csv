@@ -1,0 +1,27 @@
+Product_Name,SKU,Stock_Quantity,Reorder_Level,Reorder_Quantity,Warehouse_Location,Supplier_Name,Last_Restock_Date,Unit_Cost,Stock_Status
+Laptop,LAP-001,45,20,50,Warehouse A,Tech Suppliers Inc,2024-01-15,38000,In Stock
+Mouse,MOU-001,120,30,100,Warehouse A,Tech Suppliers Inc,2024-01-20,200,In Stock
+Keyboard,KEY-001,65,15,50,Warehouse B,Peripheral Co,2024-01-18,1200,In Stock
+Monitor,MON-001,30,10,25,Warehouse A,Display Tech,2024-01-22,10000,In Stock
+Headphones,HED-001,80,25,75,Warehouse C,Audio Solutions,2024-01-25,2000,In Stock
+USB Cable,USB-001,200,50,150,Warehouse B,Cable Mart,2024-01-28,40,In Stock
+Webcam,WEB-001,15,8,20,Warehouse A,Tech Suppliers Inc,2024-01-30,3500,Low Stock
+Speaker,SPK-001,40,12,30,Warehouse C,Audio Solutions,2024-02-01,4500,In Stock
+Printer,PRT-001,12,5,15,Warehouse B,Office Equipment Ltd,2024-02-03,15000,Low Stock
+Router,ROU-001,25,10,20,Warehouse A,Network Gear,2024-02-05,3000,In Stock
+External HDD,HDD-001,35,15,30,Warehouse B,Storage Devices,2024-02-07,5500,In Stock
+Flash Drive,FLS-001,150,40,100,Warehouse C,Storage Devices,2024-02-08,300,In Stock
+HDMI Cable,HDM-001,180,45,120,Warehouse A,Cable Mart,2024-02-10,150,In Stock
+Power Bank,PWR-001,55,20,40,Warehouse B,Mobile Accessories,2024-02-12,800,In Stock
+Phone Case,PCS-001,90,30,80,Warehouse C,Mobile Accessories,2024-02-14,250,In Stock
+Screen Protector,SCR-001,110,35,90,Warehouse A,Mobile Accessories,2024-02-15,100,In Stock
+Wireless Charger,CHG-001,42,18,35,Warehouse B,Charging Solutions,2024-02-17,1200,In Stock
+Ethernet Cable,ETH-001,95,25,70,Warehouse C,Cable Mart,2024-02-18,80,In Stock
+Desk Lamp,LMP-001,28,10,25,Warehouse A,Office Furniture,2024-02-20,1500,In Stock
+Laptop Stand,STD-001,38,12,30,Warehouse B,Office Furniture,2024-02-22,900,In Stock
+Laptop,LAP-001,18,20,50,Warehouse A,Tech Suppliers Inc,2024-02-25,38000,Needs Reorder
+Webcam,WEB-001,6,8,20,Warehouse A,Tech Suppliers Inc,2024-02-26,3500,Critical Low
+Printer,PRT-001,4,5,15,Warehouse B,Office Equipment Ltd,2024-02-27,15000,Critical Low
+Mouse,MOU-001,28,30,100,Warehouse A,Tech Suppliers Inc,2024-02-28,200,Needs Reorder
+Monitor,MON-001,8,10,25,Warehouse A,Display Tech,2024-03-01,10000,Needs Reorder
+

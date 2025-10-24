@@ -1,0 +1,31 @@
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv_tanaw312/
+env/
+.venv/
+
+# === Node / Frontend (if applicable) ===
+node_modules/
+build/
+dist/
+
+# === Environment & Config Files ===
+.env
+.vscode/
+
+# === Logs & Outputs ===
+*.log
+*.tmp
+
+# === Archives & Executables ===
+*.zip
+*.rar
+*.tar
+*.gz
+*.exe
+*.mp4

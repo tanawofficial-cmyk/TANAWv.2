@@ -1,0 +1,46 @@
+# TANAW Environment Configuration
+# Copy this file to .env and update with your actual values
+
+# OpenAI Configuration
+OPENAI_API_KEY=sk-your-openai-api-key-here
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_MAX_TOKENS=500
+OPENAI_TEMPERATURE=0.1
+OPENAI_TIMEOUT_SECONDS=20
+OPENAI_MAX_RETRIES=3
+
+# Database Configuration
+MONGODB_URI=mongodb://localhost:27017/
+MONGODB_DATABASE=tanaw_knowledge_base
+MONGODB_COLLECTION=mapping_records
+MONGODB_TIMEOUT=5000
+
+# TANAW System Configuration
+TANAW_ENVIRONMENT=development
+TANAW_ENABLE_GPT=true
+TANAW_ENABLE_CACHING=true
+TANAW_ENABLE_LEARNING=true
+TANAW_ENABLE_CROSS_USER_LEARNING=false
+
+# Thresholds
+TANAW_AUTO_MAP_THRESHOLD=0.90
+TANAW_SUGGESTED_THRESHOLD=0.70
+TANAW_GPT_ESCALATION_THRESHOLD=0.70
+
+# File Processing
+MAX_FILE_SIZE_MB=50
+SAMPLE_ROWS_LIMIT=1000
+SAMPLE_MIN=50
+MAX_COLUMNS_PER_GPT=10
+
+# Security
+FLASK_SECRET_KEY=dev-secret-key-change-in-production
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5000
+RATE_LIMIT_PER_MINUTE=60
+
+# Knowledge Base
+KNOWLEDGE_BASE_TYPE=sqlite
+KNOWLEDGE_BASE_PATH=tanaw_mapping_kb.db
+
+# Logging
+LOG_LEVEL=INFO

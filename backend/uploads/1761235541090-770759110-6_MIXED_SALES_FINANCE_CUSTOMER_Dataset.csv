@@ -1,0 +1,37 @@
+Date,Customer_ID,Customer_Name,Customer_Type,Product,Category,Sales_Amount,Revenue,Expense,Profit,Payment_Method,Customer_Satisfaction
+2024-01-01,CUST-001,John Doe,VIP,Laptop,Electronics,45000,45000,38000,7000,Credit Card,5
+2024-01-02,CUST-002,Jane Smith,Standard,Mouse,Accessories,500,500,200,300,Cash,4
+2024-01-03,CUST-003,Bob Johnson,Premium,Keyboard,Accessories,1500,1500,1200,300,Debit Card,5
+2024-01-04,CUST-004,Alice Brown,VIP,Monitor,Electronics,12000,12000,10000,2000,Credit Card,5
+2024-01-05,CUST-001,John Doe,VIP,Laptop,Electronics,45000,45000,38000,7000,Online Payment,5
+2024-01-06,CUST-005,Charlie Davis,Standard,Headphones,Accessories,2500,2500,2000,500,Credit Card,4
+2024-01-07,CUST-002,Jane Smith,Standard,Mouse,Accessories,500,500,200,300,Cash,4
+2024-01-08,CUST-006,Diana Wilson,Premium,USB Cable,Accessories,200,200,40,160,Cash,3
+2024-01-09,CUST-001,John Doe,VIP,Laptop,Electronics,45000,45000,38000,7000,Credit Card,5
+2024-01-10,CUST-007,Edward Martinez,Standard,Monitor,Electronics,12000,12000,10000,2000,Debit Card,4
+2024-01-11,CUST-003,Bob Johnson,Premium,Keyboard,Accessories,1500,1500,1200,300,Online Payment,5
+2024-01-12,CUST-008,Fiona Garcia,VIP,Mouse,Accessories,500,500,200,300,Credit Card,5
+2024-01-13,CUST-004,Alice Brown,VIP,Laptop,Electronics,45000,45000,38000,7000,Credit Card,5
+2024-01-14,CUST-009,George Rodriguez,Standard,Headphones,Accessories,2500,2500,2000,500,Cash,3
+2024-01-15,CUST-001,John Doe,VIP,Monitor,Electronics,12000,12000,10000,2000,Debit Card,5
+2024-01-16,CUST-010,Hannah Lee,Premium,Keyboard,Accessories,1500,1500,1200,300,Credit Card,5
+2024-01-17,CUST-001,John Doe,VIP,Laptop,Electronics,45000,45000,38000,7000,Online Payment,5
+2024-01-18,CUST-002,Jane Smith,Standard,Mouse,Accessories,500,500,200,300,Cash,4
+2024-01-19,CUST-011,Ian White,Standard,USB Cable,Accessories,200,200,40,160,Cash,4
+2024-01-20,CUST-003,Bob Johnson,Premium,Monitor,Electronics,12000,12000,10000,2000,Credit Card,5
+2024-01-21,CUST-004,Alice Brown,VIP,Laptop,Electronics,45000,45000,38000,7000,Debit Card,5
+2024-01-22,CUST-012,Julia Harris,VIP,Headphones,Accessories,2500,2500,2000,500,Credit Card,5
+2024-01-23,CUST-001,John Doe,VIP,Keyboard,Accessories,1500,1500,1200,300,Online Payment,5
+2024-01-24,CUST-013,Kevin Clark,Standard,Mouse,Accessories,500,500,200,300,Cash,3
+2024-01-25,CUST-001,John Doe,VIP,Laptop,Electronics,45000,45000,38000,7000,Credit Card,5
+2024-01-26,CUST-014,Laura Lewis,Premium,Monitor,Electronics,12000,12000,10000,2000,Debit Card,5
+2024-01-27,CUST-003,Bob Johnson,Premium,Keyboard,Accessories,1500,1500,1200,300,Credit Card,5
+2024-01-28,CUST-004,Alice Brown,VIP,Laptop,Electronics,45000,45000,38000,7000,Online Payment,5
+2024-01-29,CUST-015,Michael Walker,Standard,Mouse,Accessories,500,500,200,300,Cash,4
+2024-01-30,CUST-001,John Doe,VIP,Headphones,Accessories,2500,2500,2000,500,Credit Card,5
+2024-02-01,CUST-016,Nancy Hall,VIP,Laptop,Electronics,45000,45000,38000,7000,Credit Card,5
+2024-02-02,CUST-008,Fiona Garcia,VIP,Monitor,Electronics,12000,12000,10000,2000,Debit Card,5
+2024-02-03,CUST-010,Hannah Lee,Premium,Keyboard,Accessories,1500,1500,1200,300,Online Payment,5
+2024-02-04,CUST-002,Jane Smith,Standard,Mouse,Accessories,500,500,200,300,Cash,4
+2024-02-05,CUST-001,John Doe,VIP,Laptop,Electronics,45000,45000,38000,7000,Credit Card,5
+

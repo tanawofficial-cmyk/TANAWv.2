@@ -1,0 +1,116 @@
+Date,Product,Stock_Level,Location,Supplier,Reorder_Point,Cost_Per_Unit,Last_Updated
+2024-01-01,Laptop Pro,150,Warehouse A,TechSupply Inc,50,1200.00,2024-01-01 09:00:00
+2024-01-01,Wireless Mouse,300,Warehouse A,Peripheral Co,100,25.00,2024-01-01 09:00:00
+2024-01-01,USB Cable,500,Warehouse B,CableCorp,200,15.00,2024-01-01 09:00:00
+2024-01-01,Monitor 24",80,Warehouse A,DisplayTech,30,300.00,2024-01-01 09:00:00
+2024-01-01,Keyboard,200,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-01 09:00:00
+2024-01-02,Laptop Pro,145,Warehouse A,TechSupply Inc,50,1200.00,2024-01-02 10:30:00
+2024-01-02,Wireless Mouse,285,Warehouse A,Peripheral Co,100,25.00,2024-01-02 10:30:00
+2024-01-02,USB Cable,480,Warehouse B,CableCorp,200,15.00,2024-01-02 10:30:00
+2024-01-02,Monitor 24",75,Warehouse A,DisplayTech,30,300.00,2024-01-02 10:30:00
+2024-01-02,Keyboard,195,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-02 10:30:00
+2024-01-03,Laptop Pro,140,Warehouse A,TechSupply Inc,50,1200.00,2024-01-03 11:15:00
+2024-01-03,Wireless Mouse,270,Warehouse A,Peripheral Co,100,25.00,2024-01-03 11:15:00
+2024-01-03,USB Cable,460,Warehouse B,CableCorp,200,15.00,2024-01-03 11:15:00
+2024-01-03,Monitor 24",70,Warehouse A,DisplayTech,30,300.00,2024-01-03 11:15:00
+2024-01-03,Keyboard,190,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-03 11:15:00
+2024-01-04,Laptop Pro,135,Warehouse A,TechSupply Inc,50,1200.00,2024-01-04 09:45:00
+2024-01-04,Wireless Mouse,255,Warehouse A,Peripheral Co,100,25.00,2024-01-04 09:45:00
+2024-01-04,USB Cable,440,Warehouse B,CableCorp,200,15.00,2024-01-04 09:45:00
+2024-01-04,Monitor 24",65,Warehouse A,DisplayTech,30,300.00,2024-01-04 09:45:00
+2024-01-04,Keyboard,185,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-04 09:45:00
+2024-01-05,Laptop Pro,130,Warehouse A,TechSupply Inc,50,1200.00,2024-01-05 14:20:00
+2024-01-05,Wireless Mouse,240,Warehouse A,Peripheral Co,100,25.00,2024-01-05 14:20:00
+2024-01-05,USB Cable,420,Warehouse B,CableCorp,200,15.00,2024-01-05 14:20:00
+2024-01-05,Monitor 24",60,Warehouse A,DisplayTech,30,300.00,2024-01-05 14:20:00
+2024-01-05,Keyboard,180,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-05 14:20:00
+2024-01-08,Laptop Pro,125,Warehouse A,TechSupply Inc,50,1200.00,2024-01-08 08:30:00
+2024-01-08,Wireless Mouse,225,Warehouse A,Peripheral Co,100,25.00,2024-01-08 08:30:00
+2024-01-08,USB Cable,400,Warehouse B,CableCorp,200,15.00,2024-01-08 08:30:00
+2024-01-08,Monitor 24",55,Warehouse A,DisplayTech,30,300.00,2024-01-08 08:30:00
+2024-01-08,Keyboard,175,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-08 08:30:00
+2024-01-09,Laptop Pro,120,Warehouse A,TechSupply Inc,50,1200.00,2024-01-09 10:15:00
+2024-01-09,Wireless Mouse,210,Warehouse A,Peripheral Co,100,25.00,2024-01-09 10:15:00
+2024-01-09,USB Cable,380,Warehouse B,CableCorp,200,15.00,2024-01-09 10:15:00
+2024-01-09,Monitor 24",50,Warehouse A,DisplayTech,30,300.00,2024-01-09 10:15:00
+2024-01-09,Keyboard,170,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-09 10:15:00
+2024-01-10,Laptop Pro,115,Warehouse A,TechSupply Inc,50,1200.00,2024-01-10 13:45:00
+2024-01-10,Wireless Mouse,195,Warehouse A,Peripheral Co,100,25.00,2024-01-10 13:45:00
+2024-01-10,USB Cable,360,Warehouse B,CableCorp,200,15.00,2024-01-10 13:45:00
+2024-01-10,Monitor 24",45,Warehouse A,DisplayTech,30,300.00,2024-01-10 13:45:00
+2024-01-10,Keyboard,165,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-10 13:45:00
+2024-01-11,Laptop Pro,110,Warehouse A,TechSupply Inc,50,1200.00,2024-01-11 11:30:00
+2024-01-11,Wireless Mouse,180,Warehouse A,Peripheral Co,100,25.00,2024-01-11 11:30:00
+2024-01-11,USB Cable,340,Warehouse B,CableCorp,200,15.00,2024-01-11 11:30:00
+2024-01-11,Monitor 24",40,Warehouse A,DisplayTech,30,300.00,2024-01-11 11:30:00
+2024-01-11,Keyboard,160,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-11 11:30:00
+2024-01-12,Laptop Pro,105,Warehouse A,TechSupply Inc,50,1200.00,2024-01-12 09:00:00
+2024-01-12,Wireless Mouse,165,Warehouse A,Peripheral Co,100,25.00,2024-01-12 09:00:00
+2024-01-12,USB Cable,320,Warehouse B,CableCorp,200,15.00,2024-01-12 09:00:00
+2024-01-12,Monitor 24",35,Warehouse A,DisplayTech,30,300.00,2024-01-12 09:00:00
+2024-01-12,Keyboard,155,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-12 09:00:00
+2024-01-15,Laptop Pro,100,Warehouse A,TechSupply Inc,50,1200.00,2024-01-15 08:45:00
+2024-01-15,Wireless Mouse,150,Warehouse A,Peripheral Co,100,25.00,2024-01-15 08:45:00
+2024-01-15,USB Cable,300,Warehouse B,CableCorp,200,15.00,2024-01-15 08:45:00
+2024-01-15,Monitor 24",30,Warehouse A,DisplayTech,30,300.00,2024-01-15 08:45:00
+2024-01-15,Keyboard,150,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-15 08:45:00
+2024-01-16,Laptop Pro,95,Warehouse A,TechSupply Inc,50,1200.00,2024-01-16 12:15:00
+2024-01-16,Wireless Mouse,135,Warehouse A,Peripheral Co,100,25.00,2024-01-16 12:15:00
+2024-01-16,USB Cable,280,Warehouse B,CableCorp,200,15.00,2024-01-16 12:15:00
+2024-01-16,Monitor 24",25,Warehouse A,DisplayTech,30,300.00,2024-01-16 12:15:00
+2024-01-16,Keyboard,145,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-16 12:15:00
+2024-01-17,Laptop Pro,90,Warehouse A,TechSupply Inc,50,1200.00,2024-01-17 10:30:00
+2024-01-17,Wireless Mouse,120,Warehouse A,Peripheral Co,100,25.00,2024-01-17 10:30:00
+2024-01-17,USB Cable,260,Warehouse B,CableCorp,200,15.00,2024-01-17 10:30:00
+2024-01-17,Monitor 24",20,Warehouse A,DisplayTech,30,300.00,2024-01-17 10:30:00
+2024-01-17,Keyboard,140,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-17 10:30:00
+2024-01-18,Laptop Pro,85,Warehouse A,TechSupply Inc,50,1200.00,2024-01-18 14:00:00
+2024-01-18,Wireless Mouse,105,Warehouse A,Peripheral Co,100,25.00,2024-01-18 14:00:00
+2024-01-18,USB Cable,240,Warehouse B,CableCorp,200,15.00,2024-01-18 14:00:00
+2024-01-18,Monitor 24",15,Warehouse A,DisplayTech,30,300.00,2024-01-18 14:00:00
+2024-01-18,Keyboard,135,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-18 14:00:00
+2024-01-19,Laptop Pro,80,Warehouse A,TechSupply Inc,50,1200.00,2024-01-19 09:15:00
+2024-01-19,Wireless Mouse,90,Warehouse A,Peripheral Co,100,25.00,2024-01-19 09:15:00
+2024-01-19,USB Cable,220,Warehouse B,CableCorp,200,15.00,2024-01-19 09:15:00
+2024-01-19,Monitor 24",10,Warehouse A,DisplayTech,30,300.00,2024-01-19 09:15:00
+2024-01-19,Keyboard,130,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-19 09:15:00
+2024-01-22,Laptop Pro,75,Warehouse A,TechSupply Inc,50,1200.00,2024-01-22 11:45:00
+2024-01-22,Wireless Mouse,75,Warehouse A,Peripheral Co,100,25.00,2024-01-22 11:45:00
+2024-01-22,USB Cable,200,Warehouse B,CableCorp,200,15.00,2024-01-22 11:45:00
+2024-01-22,Monitor 24",5,Warehouse A,DisplayTech,30,300.00,2024-01-22 11:45:00
+2024-01-22,Keyboard,125,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-22 11:45:00
+2024-01-23,Laptop Pro,70,Warehouse A,TechSupply Inc,50,1200.00,2024-01-23 13:20:00
+2024-01-23,Wireless Mouse,60,Warehouse A,Peripheral Co,100,25.00,2024-01-23 13:20:00
+2024-01-23,USB Cable,180,Warehouse B,CableCorp,200,15.00,2024-01-23 13:20:00
+2024-01-23,Monitor 24",0,Warehouse A,DisplayTech,30,300.00,2024-01-23 13:20:00
+2024-01-23,Keyboard,120,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-23 13:20:00
+2024-01-24,Laptop Pro,65,Warehouse A,TechSupply Inc,50,1200.00,2024-01-24 08:30:00
+2024-01-24,Wireless Mouse,45,Warehouse A,Peripheral Co,100,25.00,2024-01-24 08:30:00
+2024-01-24,USB Cable,160,Warehouse B,CableCorp,200,15.00,2024-01-24 08:30:00
+2024-01-24,Monitor 24",0,Warehouse A,DisplayTech,30,300.00,2024-01-24 08:30:00
+2024-01-24,Keyboard,115,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-24 08:30:00
+2024-01-25,Laptop Pro,60,Warehouse A,TechSupply Inc,50,1200.00,2024-01-25 15:10:00
+2024-01-25,Wireless Mouse,30,Warehouse A,Peripheral Co,100,25.00,2024-01-25 15:10:00
+2024-01-25,USB Cable,140,Warehouse B,CableCorp,200,15.00,2024-01-25 15:10:00
+2024-01-25,Monitor 24",0,Warehouse A,DisplayTech,30,300.00,2024-01-25 15:10:00
+2024-01-25,Keyboard,110,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-25 15:10:00
+2024-01-26,Laptop Pro,55,Warehouse A,TechSupply Inc,50,1200.00,2024-01-26 10:45:00
+2024-01-26,Wireless Mouse,15,Warehouse A,Peripheral Co,100,25.00,2024-01-26 10:45:00
+2024-01-26,USB Cable,120,Warehouse B,CableCorp,200,15.00,2024-01-26 10:45:00
+2024-01-26,Monitor 24",0,Warehouse A,DisplayTech,30,300.00,2024-01-26 10:45:00
+2024-01-26,Keyboard,105,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-26 10:45:00
+2024-01-29,Laptop Pro,50,Warehouse A,TechSupply Inc,50,1200.00,2024-01-29 09:30:00
+2024-01-29,Wireless Mouse,0,Warehouse A,Peripheral Co,100,25.00,2024-01-29 09:30:00
+2024-01-29,USB Cable,100,Warehouse B,CableCorp,200,15.00,2024-01-29 09:30:00
+2024-01-29,Monitor 24",0,Warehouse A,DisplayTech,30,300.00,2024-01-29 09:30:00
+2024-01-29,Keyboard,100,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-29 09:30:00
+2024-01-30,Laptop Pro,45,Warehouse A,TechSupply Inc,50,1200.00,2024-01-30 12:15:00
+2024-01-30,Wireless Mouse,0,Warehouse A,Peripheral Co,100,25.00,2024-01-30 12:15:00
+2024-01-30,USB Cable,80,Warehouse B,CableCorp,200,15.00,2024-01-30 12:15:00
+2024-01-30,Monitor 24",0,Warehouse A,DisplayTech,30,300.00,2024-01-30 12:15:00
+2024-01-30,Keyboard,95,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-30 12:15:00
+2024-01-31,Laptop Pro,40,Warehouse A,TechSupply Inc,50,1200.00,2024-01-31 14:45:00
+2024-01-31,Wireless Mouse,0,Warehouse A,Peripheral Co,100,25.00,2024-01-31 14:45:00
+2024-01-31,USB Cable,60,Warehouse B,CableCorp,200,15.00,2024-01-31 14:45:00
+2024-01-31,Monitor 24",0,Warehouse A,DisplayTech,30,300.00,2024-01-31 14:45:00
+2024-01-31,Keyboard,90,Warehouse B,KeyBoard Ltd,75,45.00,2024-01-31 14:45:00
