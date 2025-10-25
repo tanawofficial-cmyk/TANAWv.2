@@ -1,0 +1,292 @@
+TANAW - AI-Powered Analytics Platform
+=====================================
+
+📁 TANAW/
+│
+├── 📁 backend/                           # Node.js Backend Server
+│   ├── 📁 analytics_service/             # Python Flask Analytics Engine
+│   │   ├── app_clean.py                  # Main Flask API (114 KB)
+│   │   ├── gpt_column_mapper.py          # OpenAI Column Mapping (24 KB)
+│   │   ├── domain_detector.py            # Domain Classification (20 KB)
+│   │   ├── bar_chart_generator.py        # Bar Chart Engine (89 KB)
+│   │   ├── line_chart_generator.py       # Line Chart Engine (46 KB)
+│   │   ├── inventory_analytics.py        # Inventory Domain (17 KB)
+│   │   ├── finance_analytics.py          # Finance Domain (35 KB)
+│   │   ├── customer_analytics.py         # Customer Domain (25 KB)
+│   │   ├── sales_forecast_generator.py   # Sales Forecasting (24 KB)
+│   │   ├── stock_forecast_generator.py   # Stock Forecasting (23 KB)
+│   │   ├── predictive_analytics.py       # Predictive Models (32 KB)
+│   │   ├── narrative_insights.py         # Natural Language Insights (32 KB)
+│   │   ├── conversational_insights.py    # Conversational AI (18 KB)
+│   │   ├── anomaly_detector.py           # Anomaly Detection (24 KB)
+│   │   ├── semantic_detector.py          # Semantic Analysis (13 KB)
+│   │   ├── robust_file_parser.py         # File Parsing (20 KB)
+│   │   ├── config_manager.py             # Configuration (21 KB)
+│   │   ├── data_profiler.py              # Data Profiling (5 KB)
+│   │   ├── axis_resolver.py              # Chart Axis Logic (4 KB)
+│   │   ├── transformer.py                # Data Transformation (3 KB)
+│   │   ├── chart_validator.py            # Chart Validation (6 KB)
+│   │   ├── cache_manager.py              # Caching System (32 KB)
+│   │   ├── tanaw_canonical_schema.py     # Data Schema (18 KB)
+│   │   ├── gpt_config.py                 # GPT Settings (4 KB)
+│   │   ├── config.yml                    # Configuration File
+│   │   ├── requirements.txt              # Python Dependencies
+│   │   ├── analytics_type_classifier.pkl # ML Model (1 KB)
+│   │   ├── analytics_vectorizer.pkl      # ML Model (3 KB)
+│   │   ├── tanaw_mapping_cache.db        # Cache Database (16 KB)
+│   │   └── __init__.py                   # Package Initializer
+│   │
+│   ├── 📁 controllers/                   # Business Logic Controllers
+│   │   ├── adminController.js            # Admin Operations
+│   │   ├── analyticsController.js        # Analytics Tracking
+│   │   ├── authController.js             # Authentication
+│   │   ├── connectivityController.js     # Connectivity Checks
+│   │   ├── contactController.js          # Contact Form Handler
+│   │   ├── feedbackController.js         # User Feedback
+│   │   ├── fileController.js             # File Upload & Processing
+│   │   └── userController.js             # User Management
+│   │
+│   ├── 📁 models/                        # MongoDB Data Models
+│   │   ├── Analytics.js                  # Analytics Tracking Model
+│   │   ├── ApiUsage.js                   # API Usage Logging
+│   │   ├── Contact.js                    # Contact Messages
+│   │   ├── Dataset.js                    # Dataset Metadata
+│   │   ├── Feedback.js                   # User Feedback
+│   │   ├── File.js                       # File Metadata
+│   │   ├── Upload.js                     # Upload Records
+│   │   └── User.js                       # User Accounts
+│   │
+│   ├── 📁 routes/                        # API Route Definitions
+│   │   ├── adminRoute.js                 # Admin API Routes
+│   │   ├── analyticsRoute.js             # Analytics Routes
+│   │   ├── authRoute.js                  # Auth Routes
+│   │   ├── connectivityRoute.js          # Connectivity Routes
+│   │   ├── contactRoute.js               # Contact Routes
+│   │   ├── feedback.js                   # Feedback Routes
+│   │   ├── filesRoute.js                 # File Upload Routes
+│   │   └── users.js                      # User Routes
+│   │
+│   ├── 📁 middleware/                    # Express Middleware
+│   │   └── authMiddleware.js             # JWT Authentication & Authorization
+│   │
+│   ├── 📁 services/                      # External Services
+│   │   └── emailService.js               # Email Notifications (Nodemailer)
+│   │
+│   ├── 📁 scripts/                       # Utility Scripts
+│   │   └── clearDatasets.js              # Database Cleanup
+│   │
+│   ├── 📁 uploads/                       # Temporary File Storage
+│   │   └── .gitignore                    # Ignore uploaded files
+│   │
+│   ├── server.js                         # Express Server Entry Point
+│   ├── createAdmin.js                    # Admin Account Creator
+│   ├── package.json                      # Node.js Dependencies
+│   ├── package-lock.json                 # Dependency Lock File
+│   ├── tanaw_column_knowledge.db         # Column Knowledge Base
+│   ├── .env                              # Environment Variables
+│   └── FEEDBACK_EMPTY_MESSAGE_FIX.md     # Documentation
+│
+├── 📁 frontend/                          # React Frontend Application
+│   ├── 📁 src/                           # Source Code
+│   │   ├── 📁 pages/                     # Page Components
+│   │   │   ├── Dashboard.js              # User Dashboard (2513 lines)
+│   │   │   ├── AdminDashboard.js         # Admin Dashboard (2089 lines)
+│   │   │   ├── LandingPage.js            # Landing Page
+│   │   │   ├── Login.js                  # Login Page
+│   │   │   ├── Register.js               # Registration Page
+│   │   │   ├── ContactPage.js            # Contact Support
+│   │   │   ├── SupportPage.js            # Support Center
+│   │   │   ├── AboutPage.js              # About TANAW
+│   │   │   ├── FeaturesPage.js           # Features Overview
+│   │   │   ├── DocumentationPage.js      # Documentation
+│   │   │   ├── PrivacyPage.js            # Privacy Policy
+│   │   │   ├── TermsPage.js              # Terms of Service
+│   │   │   └── UpdatesPage.js            # Updates & News
+│   │   │
+│   │   ├── 📁 components/                # Reusable Components
+│   │   │   ├── Header.js                 # Navigation Header
+│   │   │   ├── Footer.js                 # Page Footer
+│   │   │   ├── StickyHeader.js           # Dashboard Header (219 lines)
+│   │   │   ├── UserProfileDropdown.js    # User Profile Menu (465 lines)
+│   │   │   ├── FeedbackModal.js          # Feedback Form (163 lines)
+│   │   │   ├── AdminCharts.js            # Admin Analytics Charts
+│   │   │   ├── AnalyticsDashboard.js     # Analytics Display
+│   │   │   ├── AnalyticsDisplay.js       # Analytics Components
+│   │   │   ├── AnalyticsExport.js        # Export Functionality
+│   │   │   └── ChartComponents.js        # Chart Renderers
+│   │   │
+│   │   ├── 📁 services/                  # API Services
+│   │   │   └── analytics.js              # Analytics Service
+│   │   │
+│   │   ├── 📁 api/                       # API Integration
+│   │   │   └── analytics.js              # Analytics API
+│   │   │
+│   │   ├── 📁 styles/                    # CSS Styles
+│   │   │   └── conflict-resolution.css   # Style Fixes
+│   │   │
+│   │   ├── 📁 assets/                    # Static Assets
+│   │   │   └── TANAW-LOGO.png            # App Logo
+│   │   │
+│   │   ├── api.js                        # Axios API Client
+│   │   ├── App.js                        # Main App Component
+│   │   ├── index.js                      # React Entry Point
+│   │   └── index.css                     # Global Styles
+│   │
+│   ├── 📁 public/                        # Public Assets
+│   │   ├── index.html                    # HTML Template
+│   │   ├── favicon.ico                   # Favicon
+│   │   ├── logo192.png                   # Logo (192px)
+│   │   ├── logo512.png                   # Logo (512px)
+│   │   ├── manifest.json                 # PWA Manifest
+│   │   └── robots.txt                    # SEO Robots
+│   │
+│   ├── package.json                      # Frontend Dependencies
+│   ├── package-lock.json                 # Dependency Lock
+│   ├── tailwind.config.js                # Tailwind CSS Config
+│   └── postcss.config.js                 # PostCSS Config
+│
+├── 📁 venv_tanaw312/                     # Python Virtual Environment
+│   ├── 📁 Lib/                           # Python Libraries
+│   ├── 📁 Scripts/                       # Python Executables
+│   ├── 📁 Include/                       # C Headers
+│   ├── 📁 share/                         # Shared Resources
+│   └── pyvenv.cfg                        # Venv Configuration
+│
+├── 📁 TEST FILES/                        # Testing Datasets (74 files)
+│   ├── 1_PURE_SALES_Dataset.csv          # Sales Test Data
+│   ├── 2_PURE_INVENTORY_Dataset.csv      # Inventory Test Data
+│   ├── 3_PURE_FINANCE_Dataset.csv        # Finance Test Data
+│   ├── 4_PURE_CUSTOMER_Dataset.csv       # Customer Test Data
+│   ├── 5_MIXED_SALES_INVENTORY_Dataset.csv
+│   ├── 6_MIXED_SALES_FINANCE_CUSTOMER_Dataset.csv
+│   ├── comprehensive_test_all_charts.csv
+│   ├── finance_test1_standard_revenue.csv
+│   ├── forecast_test1_standard_sales.csv
+│   ├── line_test1_standard_timeseries.csv
+│   ├── INVENTORY_TURNOVER_TEST_*.csv     # Multiple test files
+│   ├── COMPREHENSIVE_TEST_README.md      # Test Documentation
+│   ├── FINANCE_LINE_CHART_TESTING_GUIDE.md
+│   ├── INVENTORY_TEST_README.md
+│   ├── LINE_CHART_TESTING_GUIDE.md
+│   ├── SALES_FORECAST_TESTING_GUIDE.md
+│   └── ... (63 CSV files, 9 MD files, 1 PDF)
+│
+├── 📄 DEFENSE_PRESENTATION_OUTLINE.md    # Capstone Presentation
+├── 📄 DEFENSE_MATERIALS_INDEX.md         # Defense Resources
+├── 📄 DEFENSE_VALUE_PROPOSITION.md       # Value Proposition
+├── 📄 DEFENSE_TECH_STACK_QUICK_ANSWERS.md
+├── 📄 DEFENSE_ACCURACY_ANSWER.md         # Accuracy Explanation
+├── 📄 DEFENSE_ACCURACY_QUICK_CARD.md     # Quick Reference
+├── 📄 PANEL_DEFENSE_CHEATSHEET.md        # Panel Q&A
+├── 📄 PANEL_HANDOUT_EXECUTIVE_SUMMARY.md # Executive Summary
+├── 📄 PANEL_OBJECTIONS_FAQ.md            # FAQ
+│
+├── 📄 QUICK_DEPLOYMENT_GUIDE.md          # Deployment Instructions
+├── 📄 QUICK_TEST_REFERENCE.md            # Testing Guide
+├── 📄 QUICK_VENV_REFERENCE.md            # Venv Setup Guide
+├── 📄 TANAW_TECH_STACK_AND_DEPLOYMENT.md # Tech Stack Overview
+├── 📄 TECH_STACK_SUMMARY.md              # Stack Summary
+├── 📄 TANAW_USER_MANAGEMENT.md           # User Management Docs
+├── 📄 EMAIL_CONFIGURATION_SETUP.md       # Email Config
+├── 📄 ENHANCED_USER_MANAGEMENT.md        # Enhanced Features
+│
+├── 📄 ROOT_FOLDER_CLEANUP_COMPLETE.md    # Cleanup Documentation
+├── 📄 package.json                       # Root Tailwind Config
+├── 📄 package-lock.json                  # Root Dependencies
+└── 📄 .gitignore                         # Git Ignore Rules
+
+
+=====================================
+TECHNOLOGY STACK
+=====================================
+
+Backend:
+  - Node.js 22.x + Express.js (API Server)
+  - Python 3.12 + Flask (Analytics Engine)
+  - MongoDB (Database)
+  - JWT (Authentication)
+  - Nodemailer (Email Service)
+
+Frontend:
+  - React 18.x (UI Framework)
+  - Tailwind CSS 4.x (Styling)
+  - Recharts (Data Visualization)
+  - React Hot Toast (Notifications)
+  - Axios (HTTP Client)
+
+AI/ML Services:
+  - OpenAI GPT-3.5-turbo (Column Mapping)
+  - Prophet (Time Series Forecasting)
+  - Custom ML Models (Domain Classification)
+  - Scikit-learn (Data Processing)
+
+Analytics:
+  - Pandas + NumPy (Data Analysis)
+  - Custom Chart Generators (Bar, Line, Pie)
+  - Multi-domain Analytics (Sales, Inventory, Finance, Customer)
+  - Predictive Analytics & Forecasting
+  - Natural Language Insights
+
+Key Features:
+  - AI-Powered Column Mapping
+  - Multi-Domain Analytics Support
+  - Automated Chart Generation
+  - Sales & Stock Forecasting
+  - Anomaly Detection
+  - Natural Language Insights
+  - Role-Based Access Control (User/Admin)
+  - Real-time Analytics Dashboard
+
+
+=====================================
+FILE STATISTICS
+=====================================
+
+Total Essential Files: ~100 core files
+  - Backend JavaScript: 25+ files
+  - Backend Python: 25+ files
+  - Frontend Components: 40+ files
+  - Documentation: 17 files
+  - Test Datasets: 74 files
+
+Lines of Code:
+  - Backend: ~5,000+ lines (Node.js + Python)
+  - Frontend: ~10,000+ lines (React)
+  - Total: ~15,000+ lines of production code
+
+Storage:
+  - Root Documentation: ~236 KB
+  - Backend Analytics Service: ~600 KB
+  - Frontend Source: ~500 KB
+  - Dependencies: Managed by npm/pip
+
+
+=====================================
+DEPLOYMENT STRUCTURE
+=====================================
+
+Production Components:
+  1. Frontend (React) → Deployed to Web Server
+  2. Backend (Node.js) → API Server (Port 5000)
+  3. Analytics Service (Flask) → Python Server (Port 5002)
+  4. MongoDB → Database Server (Port 27017)
+
+Development Environment:
+  - Python: venv_tanaw312 (Python 3.12.10)
+  - Node.js: Version 22.x
+  - MongoDB: Local/Cloud Instance
+
+
+=====================================
+NOTES
+=====================================
+
+✅ All temporary/fix documentation removed
+✅ Defense presentation materials intact
+✅ Deployment guides available
+✅ Clean, production-ready structure
+✅ No unnecessary files
+✅ Optimized for capstone defense
+
+Last Updated: October 25, 2025
+

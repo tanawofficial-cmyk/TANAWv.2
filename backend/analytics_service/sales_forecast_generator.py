@@ -10,8 +10,6 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
-from chart_styling import TANAWChartStyling
-from fallback_handler import TANAWFallbackHandler
 
 # Import Prophet for advanced forecasting
 try:
@@ -30,12 +28,6 @@ class TANAWSalesForecastGenerator:
     def __init__(self):
         self.forecast_periods = 30  # Forecast 30 days ahead
         self.confidence_level = 0.95  # 95% confidence interval
-        
-        # Initialize chart styling
-        self.styling = TANAWChartStyling()
-        
-        # Initialize fallback handler
-        self.fallback_handler = TANAWFallbackHandler()
         
         # Prophet configuration for better forecasting
         self.prophet_config = {
@@ -62,26 +54,54 @@ class TANAWSalesForecastGenerator:
         try:
             available_cols = []
             
-            # Check for Date column
-            date_candidates = [
-                "Date", "OrderDate", "Order_Date", "TransactionDate", "Transaction_Date",
-                "SaleDate", "Sale_Date", "PurchaseDate", "Purchase_Date", "Time",
-                "Timestamp", "CreatedAt", "Created_At", "UpdatedAt", "Updated_At"
-            ]
-            
+            # Check for Date column - 3-TIER PRIORITIZATION
             date_col = None
-            for col in df.columns:
-                col_lower = col.lower().replace(" ", "_").replace("-", "_")
-                if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
-                       for candidate in date_candidates):
-                    # Try to parse as date
-                    try:
-                        pd.to_datetime(df[col].head(5), errors='coerce')
-                        date_col = col
-                        available_cols.append(col)
-                        break
-                    except:
-                        continue
+            
+            # PRIORITY 1: Use explicitly mapped "Date" column
+            if hasattr(self, 'column_mapping') and self.column_mapping:
+                for original_col, canonical_type in self.column_mapping.items():
+                    if canonical_type == "Date" and original_col in df.columns:
+                        try:
+                            pd.to_datetime(df[original_col].head(5), errors='coerce')
+                            date_col = original_col
+                            available_cols.append(date_col)
+                            print(f"✅ Using mapped Date column: {original_col}")
+                            break
+                        except:
+                            pass
+            
+            # PRIORITY 2: Check for canonical "Date" column
+            if not date_col and "Date" in df.columns:
+                try:
+                    pd.to_datetime(df["Date"].head(5), errors='coerce')
+                    date_col = "Date"
+                    available_cols.append(date_col)
+                    print(f"✅ Using canonical Date column")
+                except:
+                    pass
+            
+            # PRIORITY 3: Flexible search
+            if not date_col:
+                print("🔍 No Date mapping found, attempting flexible search...")
+                date_candidates = [
+                    "Date", "OrderDate", "Order_Date", "TransactionDate", "Transaction_Date",
+                    "SaleDate", "Sale_Date", "PurchaseDate", "Purchase_Date", "Time",
+                    "Timestamp", "CreatedAt", "Created_At", "UpdatedAt", "Updated_At"
+                ]
+                
+                for col in df.columns:
+                    col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                    if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
+                           for candidate in date_candidates):
+                        # Try to parse as date
+                        try:
+                            pd.to_datetime(df[col].head(5), errors='coerce')
+                            date_col = col
+                            available_cols.append(col)
+                            print(f"✅ Found date column via flexible search: {col}")
+                            break
+                        except:
+                            continue
             
             if not date_col:
                 return {
@@ -92,26 +112,56 @@ class TANAWSalesForecastGenerator:
                     "description": "Sales forecast requires date column"
                 }
             
-            # Check for Sales/Value column
-            sales_candidates = [
-                "Sales", "Sales_Amount", "SalesAmount", "Revenue", "Total_Sales", "TotalSales",
-                "Amount", "Value", "Price", "Cost", "Income", "Profit", "Earnings"
-            ]
-            
+            # Check for Sales/Value column - 3-TIER PRIORITIZATION
             sales_col = None
-            for col in df.columns:
-                col_lower = col.lower().replace(" ", "_").replace("-", "_")
-                if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
-                       for candidate in sales_candidates):
-                    # Validate numeric
-                    try:
-                        numeric_data = pd.to_numeric(df[col], errors='coerce')
-                        if numeric_data.notna().sum() / len(df) >= 0.5:
-                            sales_col = col
-                            available_cols.append(col)
-                            break
-                    except:
-                        continue
+            
+            # PRIORITY 1: Use explicitly mapped "Sales" column
+            if hasattr(self, 'column_mapping') and self.column_mapping:
+                for original_col, canonical_type in self.column_mapping.items():
+                    if canonical_type == "Sales" and original_col in df.columns:
+                        try:
+                            numeric_data = pd.to_numeric(df[original_col], errors='coerce')
+                            if numeric_data.notna().sum() / len(df) >= 0.5:
+                                sales_col = original_col
+                                available_cols.append(sales_col)
+                                print(f"✅ Using mapped Sales column: {original_col}")
+                                break
+                        except:
+                            pass
+            
+            # PRIORITY 2: Check for canonical "Sales" column
+            if not sales_col and "Sales" in df.columns:
+                try:
+                    numeric_data = pd.to_numeric(df["Sales"], errors='coerce')
+                    if numeric_data.notna().sum() / len(df) >= 0.5:
+                        sales_col = "Sales"
+                        available_cols.append(sales_col)
+                        print(f"✅ Using canonical Sales column")
+                except:
+                    pass
+            
+            # PRIORITY 3: Flexible search
+            if not sales_col:
+                print("🔍 No Sales mapping found, attempting flexible search...")
+                sales_candidates = [
+                    "Sales", "Sales_Amount", "SalesAmount", "Revenue", "Total_Sales", "TotalSales",
+                    "Amount", "Value", "Price", "Cost", "Income", "Profit", "Earnings"
+                ]
+                
+                for col in df.columns:
+                    col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                    if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
+                           for candidate in sales_candidates):
+                        # Validate numeric
+                        try:
+                            numeric_data = pd.to_numeric(df[col], errors='coerce')
+                            if numeric_data.notna().sum() / len(df) >= 0.5:
+                                sales_col = col
+                                available_cols.append(col)
+                                print(f"✅ Found sales column via flexible search: {col}")
+                                break
+                        except:
+                            continue
             
             if not sales_col:
                 return {

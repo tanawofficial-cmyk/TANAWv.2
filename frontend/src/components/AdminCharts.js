@@ -28,9 +28,6 @@ ChartJS.register(
 const AdminCharts = ({ analyticsData }) => {
   // Use real TANAW data with actual dates from backend
   const generateTimeSeriesData = () => {
-    const totalDatasets = analyticsData?.overview?.totalDatasets?.value || 0;
-    const totalCharts = analyticsData?.overview?.chartsGenerated?.value || 0;
-    
     // Generate last 7 days with actual dates
     const labels = [];
     const datasets = analyticsData?.timeSeries?.dailyDatasets || [];
@@ -118,7 +115,6 @@ const AdminCharts = ({ analyticsData }) => {
   };
 
   // Bar chart data for user activity (using real TANAW data with actual dates from backend)
-  const activeUsers = analyticsData?.overview?.activeUsers?.value || 0;
   const generateActiveUsersData = () => {
     const labels = [];
     const data = analyticsData?.timeSeries?.dailyActiveUsers || [];

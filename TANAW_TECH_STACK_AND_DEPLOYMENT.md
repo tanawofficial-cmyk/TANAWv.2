@@ -4,6 +4,24 @@
 
 ---
 
+## ⚠️ **CRITICAL: Virtual Environment Setup**
+
+**This project uses ONE virtual environment at the root:**
+```
+venv_tanaw312 (Python 3.12.10, 114 packages)
+```
+
+**DO NOT use** `backend\analytics_service\venv` - it's incomplete!
+
+**Quick Start:**
+```powershell
+.\venv_tanaw312\Scripts\Activate.ps1
+```
+
+**📚 Full Details:** See `QUICK_VENV_REFERENCE.md` or `VENV_CONSOLIDATION_REPORT.md`
+
+---
+
 ## 🎯 **Quick Answers to Panel Questions**
 
 ### **1️⃣ What framework is your frontend?**

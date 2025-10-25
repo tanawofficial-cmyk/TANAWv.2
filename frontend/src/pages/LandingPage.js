@@ -1,17 +1,10 @@
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 import logo from "../assets/TANAW-LOGO.png";
 
 const LandingPage = () => {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  // Removed unused scrolled state
 
   return (
     <div className="relative min-h-screen font-sans text-gray-100 bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900 overflow-hidden">
@@ -22,36 +15,8 @@ const LandingPage = () => {
         <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-4000"></div>
       </div>
 
-      {/* Navbar */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-gray-900/95 backdrop-blur-lg shadow-2xl' : 'bg-transparent'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            <div className="flex items-center space-x-3 group cursor-pointer">
-              <div className="relative">
-                <div className="absolute inset-0 bg-blue-500 rounded-full blur-md opacity-50 group-hover:opacity-75 transition-opacity"></div>
-                <img src={logo} alt="TANAW Logo" className="relative w-8 h-8 md:w-10 md:h-10 rounded-full object-cover ring-2 ring-blue-400/30" />
-              </div>
-              <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                TANAW
-              </span>
-            </div>
-            <div className="flex items-center space-x-3 md:space-x-6">
-              <Link
-                to="/login"
-                className="text-sm md:text-base text-gray-300 font-medium hover:text-white transition-colors duration-300"
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-full font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-blue-500/50 text-sm md:text-base"
-              >
-                Get Started
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Header */}
+      <Header />
 
       {/* Hero Section */}
       <header className="relative pt-32 pb-20 md:pt-40 md:pb-32 px-4 sm:px-6 lg:px-8">
@@ -475,76 +440,7 @@ const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="relative bg-gray-900/50 backdrop-blur-sm border-t border-white/10 py-12 md:py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 mb-12">
-            {/* Brand */}
-            <div className="md:col-span-1">
-              <div className="flex items-center space-x-3 mb-4">
-                <img src={logo} alt="TANAW Logo" className="w-8 h-8 rounded-full object-cover" />
-                <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  TANAW
-                </span>
-              </div>
-              <p className="text-sm text-gray-400 mb-4">
-                AI-powered analytics platform for intelligent data visualization and business insights.
-              </p>
-            </div>
-
-            {/* Links */}
-            {[
-              {
-                title: "Product",
-                links: [
-                  { name: "Features", href: "/features" },
-                  { name: "How It Works", href: "/#how-it-works" },
-                  { name: "Analytics Types", href: "/#domains" },
-                  { name: "Updates", href: "/updates" }
-                ]
-              },
-              {
-                title: "Company",
-                links: [
-                  { name: "About Us", href: "/about" },
-                  { name: "Contact", href: "/contact" },
-                  { name: "Privacy Policy", href: "/privacy" }
-                ]
-              },
-              {
-                title: "Resources",
-                links: [
-                  { name: "Documentation", href: "/docs" },
-                  { name: "Support", href: "/support" },
-                  { name: "API Reference", href: "/api" }
-                ]
-              }
-            ].map((section, idx) => (
-              <div key={idx}>
-                <h4 className="text-white font-semibold mb-4">{section.title}</h4>
-                <ul className="space-y-2">
-                  {section.links.map((link) => (
-                    <li key={link.name}>
-                      <Link to={link.href} className="text-sm text-gray-400 hover:text-white transition-colors duration-200">
-                        {link.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between">
-            <p className="text-sm text-gray-400 mb-4 md:mb-0">
-              &copy; {new Date().getFullYear()} TANAW. All rights reserved.
-            </p>
-            <div className="flex space-x-6 text-sm text-gray-400">
-              <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       {/* Custom CSS for animations */}
       <style jsx>{`
@@ -644,7 +540,7 @@ const LandingPage = () => {
             transform: translateY(-10px);
           }
         }
-        .hover\:animate-float:hover {
+        .hover\\:animate-float:hover {
           animation: float 3s ease-in-out infinite;
         }
       `}</style>

@@ -30,3 +30,31 @@ export const authMiddleware = (req, res, next) => {
     });
   }
 };
+
+// Admin authorization middleware
+export const authorizeAdmin = (req, res, next) => {
+  try {
+    // Check if user exists and has admin role
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Authentication required",
+      });
+    }
+
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Admin access required",
+      });
+    }
+
+    next();
+  } catch (err) {
+    console.error("❌ Admin Authorization Error:", err.message);
+    return res.status(403).json({
+      success: false,
+      message: "Forbidden: Access denied",
+    });
+  }
+};

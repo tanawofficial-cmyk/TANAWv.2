@@ -236,6 +236,18 @@ const uploadFile = async (req, res) => {
         confidence: "?",
       }));
 
+      // 🧹 Auto-cleanup: Delete uploaded file (mapping required case)
+      if (req.file && req.file.path) {
+        try {
+          fs.unlink(req.file.path, (err) => {
+            if (err) console.error("⚠️ Failed to delete uploaded file:", err.message);
+            else console.log("🧹 Cleaned up uploaded file:", req.file.filename);
+          });
+        } catch (cleanupErr) {
+          console.error("⚠️ Cleanup error:", cleanupErr.message);
+        }
+      }
+
       return res.status(200).json({
         success: true,
         nextStep: "mapping_required",
@@ -270,10 +282,36 @@ const uploadFile = async (req, res) => {
       console.log("💡 Flask insights:", processedData.insights);
       console.log("🚀 Sending final response to frontend:", responsePayload);
 
+      // 🧹 Auto-cleanup: Delete uploaded file after successful processing
+      if (req.file && req.file.path) {
+        try {
+          fs.unlink(req.file.path, (err) => {
+            if (err) {
+              console.error("⚠️ Failed to delete uploaded file:", err.message);
+            } else {
+              console.log("🧹 Cleaned up uploaded file:", req.file.filename);
+            }
+          });
+        } catch (cleanupErr) {
+          console.error("⚠️ Cleanup error:", cleanupErr.message);
+        }
+      }
+
       return res.status(200).json(responsePayload);
 
   } catch (err) {
     console.error("❌ File upload & analysis error:", err);
+    
+    // 🧹 Cleanup file on error too
+    if (req.file && req.file.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+        console.log("🧹 Cleaned up failed upload:", req.file.filename);
+      } catch (cleanupErr) {
+        console.error("⚠️ Failed to cleanup after error:", cleanupErr.message);
+      }
+    }
+    
     return res.status(500).json({
       success: false,
       message: "Server error during file upload",

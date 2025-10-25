@@ -223,3 +223,196 @@ export const sendPasswordResetConfirmationEmail = async (email, businessName) =>
   }
 };
 
+// Send contact form notification to admin
+export const sendContactNotificationEmail = async (contact) => {
+  try {
+    let transporter = createTransporter();
+
+    if (!transporter) {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransporter({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      console.log("📧 Using Ethereal test email account:", testAccount.user);
+    }
+
+    const adminEmail = process.env.ADMIN_EMAIL || "tanawofficial@gmail.com";
+
+    const mailOptions = {
+      from: `"TANAW Contact Form" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
+      to: adminEmail,
+      subject: `New Contact Message: ${contact.subject}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .info-box { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #667eea; }
+            .message-box { background: white; padding: 20px; margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📬 New Contact Message</h1>
+            </div>
+            <div class="content">
+              <h2>Contact Details</h2>
+              <div class="info-box">
+                <p><strong>Name:</strong> ${contact.name}</p>
+                <p><strong>Email:</strong> <a href="mailto:${contact.email}">${contact.email}</a></p>
+                <p><strong>Subject:</strong> ${contact.subject}</p>
+                <p><strong>Date:</strong> ${new Date(contact.createdAt).toLocaleString()}</p>
+              </div>
+              
+              <h3>Message:</h3>
+              <div class="message-box">
+                ${contact.message.replace(/\n/g, '<br>')}
+              </div>
+              
+              <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
+                To respond, reply directly to this email or contact ${contact.name} at ${contact.email}
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        New Contact Message from TANAW
+        
+        Name: ${contact.name}
+        Email: ${contact.email}
+        Subject: ${contact.subject}
+        Date: ${new Date(contact.createdAt).toLocaleString()}
+        
+        Message:
+        ${contact.message}
+        
+        Reply to: ${contact.email}
+      `,
+      replyTo: contact.email
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    if (process.env.NODE_ENV === "development" || !process.env.EMAIL_SERVICE) {
+      console.log("📧 Preview URL:", nodemailer.getTestMessageUrl(info));
+    }
+
+    console.log("✅ Contact notification email sent to admin");
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("❌ Error sending contact notification email:", error);
+    throw new Error("Failed to send contact notification email");
+  }
+};
+
+// Send contact confirmation to user
+export const sendContactConfirmationEmail = async (email, name) => {
+  try {
+    let transporter = createTransporter();
+
+    if (!transporter) {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransporter({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+    }
+
+    const mailOptions = {
+      from: `"TANAW Support" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
+      to: email,
+      subject: "We received your message - TANAW Support",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .success { background: #d4edda; border-left: 4px solid #28a745; padding: 12px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>✉️ Message Received!</h1>
+            </div>
+            <div class="content">
+              <p>Hi <strong>${name}</strong>,</p>
+              
+              <div class="success">
+                <strong>Thank you for contacting TANAW!</strong>
+              </div>
+              
+              <p>We've received your message and our support team will review it shortly.</p>
+              
+              <p><strong>What happens next?</strong></p>
+              <ul>
+                <li>Our team will review your message within 24 hours</li>
+                <li>You'll receive a response via email</li>
+                <li>For urgent issues, we prioritize based on severity</li>
+              </ul>
+              
+              <p>In the meantime, you might find these resources helpful:</p>
+              <ul>
+                <li><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/docs">Documentation</a></li>
+                <li><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/support">Support Center</a></li>
+              </ul>
+              
+              <p>Best regards,<br>
+              <strong>TANAW Support Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated confirmation from TANAW.</p>
+              <p>&copy; ${new Date().getFullYear()} TANAW. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Hi ${name},
+        
+        Thank you for contacting TANAW!
+        
+        We've received your message and our support team will review it shortly.
+        
+        What happens next?
+        - Our team will review your message within 24 hours
+        - You'll receive a response via email
+        - For urgent issues, we prioritize based on severity
+        
+        Best regards,
+        TANAW Support Team
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Contact confirmation email sent to:", email);
+  } catch (error) {
+    console.error("❌ Error sending contact confirmation email:", error);
+    // Don't throw error here - contact was already saved
+  }
+};
+

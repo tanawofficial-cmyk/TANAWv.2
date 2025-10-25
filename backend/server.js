@@ -12,6 +12,7 @@ import analyticsRoutes from "./routes/analyticsRoute.js";
 import feedbackRoutes from "./routes/feedback.js";
 import adminRoutes from "./routes/adminRoute.js";
 import connectivityRoutes from "./routes/connectivityRoute.js";
+import contactRoutes from "./routes/contactRoute.js";
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.use("/api/files", fileRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api/contact", contactRoutes);
 app.use("/api/admin/connectivity", connectivityRoutes);
 
 // Connect MongoDB

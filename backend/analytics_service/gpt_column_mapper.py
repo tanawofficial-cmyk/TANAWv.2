@@ -302,6 +302,15 @@ DECISION RULES:
    • "Units", "Count" → Quantity (if clear)
    • "Stock", "Stock_Level" → Quantity (inventory)
 
+RELATIONSHIP INTELLIGENCE:
+💡 If you see Quantity + Price columns → expect Sales = Quantity × Price
+💡 If you see Revenue + Cost columns → expect Profit = Revenue − Cost
+💡 Product often belongs to Category (Product is more specific, Category is grouping)
+💡 Customer relates to transactions (Customer ≠ Sales Rep or Employee)
+💡 Transaction dates (Order/Sale Date) are more relevant than system dates (Created/Updated)
+
+Use these relationship hints to improve confidence scores and reasoning.
+
 CRITICAL: Map ONLY ONE column per type! If multiple candidates exist:
 → Choose MOST EXPLICIT name (Sales_Amount > Amount > Value)
 → Mark others as "Ignore" with reason

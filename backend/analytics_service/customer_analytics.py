@@ -122,30 +122,32 @@ class TANAWCustomerAnalytics:
     def _find_column(self, df: pd.DataFrame, column_mapping: Dict[str, str], 
                     patterns: List[str], canonical: List[str] = None) -> Optional[str]:
         """
-        Flexible column detection using patterns and canonical mappings.
-        Same approach as Finance analytics for consistency.
+        3-TIER PRIORITIZATION: Flexible column detection
+        PRIORITY 1: Check canonical mappings (explicit mapping from OpenAI)
+        PRIORITY 2: Check if canonical column exists directly in DataFrame
+        PRIORITY 3: Pattern matching (flexible fallback)
         """
-        # First, check if canonical column exists directly in dataframe
+        # PRIORITY 1: Check canonical mappings (highest priority - from OpenAI mapping)
+        if canonical and column_mapping:
+            for orig_col, canon_col in column_mapping.items():
+                if canon_col in canonical and orig_col in df.columns:
+                    print(f"   ✓ Found column '{orig_col}' via canonical mapping '{canon_col}'")
+                    return orig_col
+        
+        # PRIORITY 2: Check if canonical column exists directly in dataframe
         if canonical:
             for canon_name in canonical:
                 if canon_name in df.columns:
                     print(f"   ✓ Found column '{canon_name}' directly in DataFrame")
                     return canon_name
         
-        # Second, check actual column names with pattern matching
+        # PRIORITY 3: Pattern matching (flexible fallback)
         for col in df.columns:
             col_lower = str(col).lower().replace('_', ' ').replace('-', ' ')
             for pattern in patterns:
                 if pattern.lower() in col_lower:
                     print(f"   ✓ Found column '{col}' matching pattern '{pattern}'")
                     return col
-        
-        # Third, check canonical mappings
-        if canonical:
-            for orig_col, canon_col in column_mapping.items():
-                if canon_col in canonical and orig_col in df.columns:
-                    print(f"   ✓ Found column '{orig_col}' via canonical mapping '{canon_col}'")
-                    return orig_col
         
         print(f"   ✗ No column found for patterns: {patterns} or canonical: {canonical}")
         return None

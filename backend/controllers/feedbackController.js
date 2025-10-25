@@ -5,9 +5,10 @@ export const submitFeedback = async (req, res) => {
   try {
     const { message, rating, type } = req.body;
     
+    // ✅ Fixed: Handle empty message - allow empty string or undefined
     const feedback = new Feedback({
       userId: req.user.id,
-      message,
+      message: message || "", // Default to empty string if not provided
       rating: rating || 5, // Default to 5 if not provided
       type: type || 'user_feedback',
     });

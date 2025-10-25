@@ -1,6 +1,9 @@
+import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
-import logo from "../assets/TANAW-LOGO.png";
+import toast, { Toaster } from "react-hot-toast";
+import api from "../api";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -9,24 +12,39 @@ const ContactPage = () => {
     subject: "",
     message: ""
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const nameInputRef = useRef(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    // Create email content
-    const emailSubject = encodeURIComponent(`[TANAW Contact] ${formData.subject}`);
-    const emailBody = encodeURIComponent(
-      `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
-    );
-    
-    // Open default email client
-    window.location.href = `mailto:tanawofficial@gmail.com?subject=${emailSubject}&body=${emailBody}`;
-    
-    // Reset form
-    setTimeout(() => {
-      setFormData({ name: "", email: "", subject: "", message: "" });
-      alert("Your email client has been opened. Please send the email to complete your message.");
-    }, 500);
+    try {
+      const response = await api.post("/contact", formData);
+      
+      if (response.data.success) {
+        // Show success message
+        toast.success("✅ Message sent successfully! We'll get back to you within 24 hours.");
+        
+        // Clear all form fields
+        setFormData({ name: "", email: "", subject: "", message: "" });
+        
+        // Focus back to first field for easy resubmission
+        setTimeout(() => {
+          if (nameInputRef.current) {
+            nameInputRef.current.focus();
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error("Error submitting contact form:", error);
+      toast.error(
+        error.response?.data?.message || 
+        "❌ Failed to send message. Please try again or email us directly at tanawofficial@gmail.com"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -37,26 +55,9 @@ const ContactPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900 text-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900 text-gray-100 flex flex-col">
       {/* Header */}
-      <nav className="bg-gray-900/95 backdrop-blur-lg shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <Link to="/" className="flex items-center space-x-3 group">
-              <img src={logo} alt="TANAW Logo" className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-400/30" />
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                TANAW
-              </span>
-            </Link>
-            <Link
-              to="/"
-              className="text-gray-300 hover:text-white transition-colors"
-            >
-              ← Back to Home
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <Header />
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -79,6 +80,7 @@ const ContactPage = () => {
                   Name
                 </label>
                 <input
+                  ref={nameInputRef}
                   type="text"
                   name="name"
                   value={formData.name}
@@ -136,9 +138,18 @@ const ContactPage = () => {
 
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
+                disabled={isSubmitting}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                Send Message
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Sending...
+                  </span>
+                ) : "Send Message"}
               </button>
             </form>
           </div>
@@ -200,6 +211,34 @@ const ContactPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
+
+      {/* Toast Notifications */}
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            fontSize: "0.9rem",
+            borderRadius: "8px",
+            padding: "12px 20px",
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
     </div>
   );
 };

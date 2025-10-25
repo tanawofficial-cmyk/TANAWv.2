@@ -70,6 +70,103 @@ def sanitize_numeric_data(data):
     else:
         # Return other types unchanged (strings, booleans, etc.)
         return data
+
+def get_domain_requirements(domain: str) -> str:
+    """
+    Get human-readable requirements for each domain type.
+    Helps users understand what columns their dataset needs.
+    """
+    requirements = {
+        "sales": "Date + Sales Amount + (Product OR Region)",
+        "inventory": "Product + (Stock Level OR Quantity) + Date",
+        "finance": "Date + (Revenue OR Expense OR Profit)",
+        "customer": "Customer Name/ID + (Sales OR Transaction Date)",
+        "mixed": "Date + Sales/Amount + Product/Item columns",
+        "unknown": "Date + Numeric values (Sales/Amount/Quantity)"
+    }
+    return requirements.get(domain.lower(), requirements["unknown"])
+
+def compute_derived_columns(df: pd.DataFrame, column_mapping: Dict[str, str]) -> pd.DataFrame:
+    """
+    Auto-compute missing Sales column from Quantity × Price if both exist.
+    Increases dataset compatibility for inventory-focused datasets.
+    
+    Args:
+        df: Original DataFrame
+        column_mapping: Current column mappings
+        
+    Returns:
+        DataFrame with computed Sales column if applicable
+    """
+    try:
+        # Check if we have mapped Quantity column
+        quantity_col = None
+        for orig_col, mapped_type in column_mapping.items():
+            if mapped_type == "Quantity" and orig_col in df.columns:
+                quantity_col = orig_col
+                break
+        
+        # Check if we have any Price column (mapped or unmapped)
+        price_col = None
+        # First check mapped Price columns
+        for orig_col, mapped_type in column_mapping.items():
+            if mapped_type == "Price" and orig_col in df.columns:
+                price_col = orig_col
+                break
+        
+        # If no mapped Price, look for price-like columns
+        if not price_col:
+            for col in df.columns:
+                col_lower = str(col).lower()
+                if any(kw in col_lower for kw in ['price', 'unit_price', 'unitprice', 'cost_per']):
+                    price_col = col
+                    break
+        
+        # Check if Sales column already exists
+        has_sales = "Sales" in column_mapping.values()
+        
+        # If we have Quantity and Price but NO Sales, compute it
+        if quantity_col and price_col and not has_sales:
+            print(f"💡 Auto-computing Sales from {quantity_col} × {price_col}")
+            
+            # Convert to numeric, handling errors
+            quantity_numeric = pd.to_numeric(df[quantity_col], errors='coerce')
+            price_numeric = pd.to_numeric(df[price_col], errors='coerce')
+            
+            # Compute Sales
+            computed_sales = quantity_numeric * price_numeric
+            
+            # Check if computation was successful (not all NaN)
+            valid_values = computed_sales.notna().sum()
+            total_values = len(computed_sales)
+            
+            if valid_values / total_values >= 0.5:  # At least 50% valid
+                # Add computed column to DataFrame
+                df["Sales"] = computed_sales
+                
+                # Add to column mapping
+                column_mapping["Sales"] = "Sales"
+                
+                print(f"✅ Created Sales column: {valid_values}/{total_values} valid values")
+                print(f"   Sample values: {computed_sales.dropna().head(3).tolist()}")
+            else:
+                print(f"⚠️ Could not compute Sales: insufficient valid numeric data ({valid_values}/{total_values})")
+        
+        elif has_sales:
+            print(f"✓ Sales column already exists in mapping")
+        else:
+            missing = []
+            if not quantity_col:
+                missing.append("Quantity")
+            if not price_col:
+                missing.append("Price")
+            print(f"ℹ️ Cannot auto-compute Sales: missing {', '.join(missing)}")
+        
+    except Exception as e:
+        print(f"⚠️ Error computing derived columns: {e}")
+    
+    return df
+
 from predictive_analytics import TANAWPredictiveAnalytics
 from data_profiler import TANAWDataProfiler
 from axis_resolver import TANAWAxisResolver
@@ -1913,6 +2010,30 @@ def analyze_clean():
             df = parse_result.dataframe
             print(f"✅ File parsed: {parse_result.row_count} rows × {parse_result.col_count} columns")
             
+            # FALLBACK 1: Check if DataFrame has any data
+            if df.empty or len(df) == 0:
+                return jsonify({
+                    "success": False,
+                    "message": "Dataset is empty. Please upload a file with at least one row of data.",
+                    "fallback_reason": "empty_dataset"
+                }), 422
+            
+            # FALLBACK 2: Check if DataFrame has any columns
+            if len(df.columns) == 0:
+                return jsonify({
+                    "success": False,
+                    "message": "Dataset has no columns. Please upload a valid CSV/Excel file.",
+                    "fallback_reason": "no_columns"
+                }), 422
+            
+            # FALLBACK 3: Check minimum data requirements
+            if len(df) < 2:
+                return jsonify({
+                    "success": False,
+                    "message": "Dataset has too few rows. Please upload a file with at least 2 rows of data.",
+                    "fallback_reason": "insufficient_rows"
+                }), 422
+            
         finally:
             # Clean up temporary file
             import os
@@ -1971,6 +2092,19 @@ def analyze_clean():
             
             print(f"📋 Column mappings: {column_mapping}")
             
+            # FALLBACK 4: Check if any columns were successfully mapped
+            if not column_mapping or len(column_mapping) == 0:
+                return jsonify({
+                    "success": False,
+                    "message": "No usable columns found in your dataset. The system couldn't identify any columns suitable for analytics (e.g., dates, sales amounts, product names).",
+                    "fallback_reason": "no_usable_columns",
+                    "suggestion": "Please ensure your dataset has columns like: Date/Time, Sales/Amount, Product/Item names, or Quantity values."
+                }), 422
+            
+            # Step 3.0.5: Auto-compute derived columns (e.g., Sales = Quantity × Price)
+            print(f"💡 Step 3.0.5: Checking for derived columns...")
+            df = compute_derived_columns(df, column_mapping)
+            
             # Step 3.1: Domain Detection
             print(f"🎯 Step 3.1: Domain Detection")
             domain_classification = tanaw_processor.domain_detector.detect_domain(df, column_mapping)
@@ -1984,10 +2118,41 @@ def analyze_clean():
             print(f"🔍 Cleaned DataFrame shape: {cleaned_df.shape}")
             print(f"🔍 Cleaned DataFrame columns: {list(cleaned_df.columns)}")
             
+            # FALLBACK 5: Check if data cleaning removed all rows
+            if cleaned_df.empty or len(cleaned_df) == 0:
+                return jsonify({
+                    "success": False,
+                    "message": "After data cleaning, no valid rows remain. Your dataset may contain invalid data types or all null values.",
+                    "fallback_reason": "no_valid_data_after_cleaning",
+                    "suggestion": "Please check your dataset for: empty cells, invalid date formats, or non-numeric values in numeric columns."
+                }), 422
+            
+            # FALLBACK 6: Check minimum data after cleaning
+            if len(cleaned_df) < 2:
+                return jsonify({
+                    "success": False,
+                    "message": "Dataset has too few valid rows after cleaning. At least 2 rows of valid data are required for analytics.",
+                    "fallback_reason": "insufficient_valid_rows",
+                    "suggestion": "Please ensure your dataset has multiple rows with valid data."
+                }), 422
+            
             # Generate domain-specific analytics and charts
             print(f"🔍 Starting {domain_classification.domain} analytics and chart generation...")
             analytics_result = tanaw_processor.generate_domain_analytics(cleaned_df, column_mapping, domain_classification)
             print(f"🔍 Analytics result: {analytics_result}")
+            
+            # FALLBACK 7: Check if any charts were generated
+            charts = analytics_result.get("charts", [])
+            if not charts or len(charts) == 0:
+                return jsonify({
+                    "success": False,
+                    "message": f"No charts could be generated from your {domain_classification.domain} dataset. The mapped columns don't meet the requirements for any analytics.",
+                    "fallback_reason": "no_charts_generated",
+                    "suggestion": f"For {domain_classification.domain.upper()} analytics, your dataset should have: {get_domain_requirements(domain_classification.domain)}",
+                    "detected_domain": domain_classification.domain,
+                    "detected_columns": list(column_mapping.keys()),
+                    "mapped_types": list(column_mapping.values())
+                }), 422
             
             # Generate summary metrics
             print(f"🔍 Starting summary metrics calculation...")

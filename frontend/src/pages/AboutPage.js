@@ -1,28 +1,12 @@
 import { Link } from "react-router-dom";
-import logo from "../assets/TANAW-LOGO.png";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 const AboutPage = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900 text-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900 text-gray-100 flex flex-col">
       {/* Header */}
-      <nav className="bg-gray-900/95 backdrop-blur-lg shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <Link to="/" className="flex items-center space-x-3 group">
-              <img src={logo} alt="TANAW Logo" className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-400/30" />
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                TANAW
-              </span>
-            </Link>
-            <Link
-              to="/"
-              className="text-gray-300 hover:text-white transition-colors"
-            >
-              ← Back to Home
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <Header />
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -86,6 +70,9 @@ const AboutPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

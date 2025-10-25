@@ -1,0 +1,22 @@
+# Node
+node_modules/
+npm-debug.log
+
+# Python (exclude analytics_service for backend)
+analytics_service/
+
+# Cache + ML Models
+*.db
+*.pkl
+
+# Uploaded files
+uploads/
+
+# Test data
+*.csv
+TEST FILES/
+
+# Documentation
+*.md
+DEFENSE_*/
+PANEL_*/

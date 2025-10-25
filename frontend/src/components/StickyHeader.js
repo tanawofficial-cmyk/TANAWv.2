@@ -51,6 +51,7 @@ const StickyHeader = ({ user, onUserUpdate, onLogout, onSearch, onDateFilter }) 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSearchInput, showDateFilter]);
 
   return (

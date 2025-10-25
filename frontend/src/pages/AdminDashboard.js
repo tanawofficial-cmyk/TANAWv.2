@@ -5,25 +5,17 @@ import {
   MessageSquare, 
   TrendingUp, 
   TrendingDown,
-  Eye,
   UserPlus,
   Clock,
   Activity,
   Menu,
   X,
   LogOut,
-  RefreshCw,
-  Shield,
   Database,
-  FileText,
   BarChart,
   Star,
   Download,
-  Filter,
-  Search,
   Trash2,
-  Wifi,
-  WifiOff,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -31,11 +23,10 @@ import {
   HardDrive,
   Cpu,
   Server,
-  Settings,
-  Bell,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 import analytics from '../services/analytics';
 import AdminCharts from '../components/AdminCharts';
 import api from '../api';
@@ -53,6 +44,8 @@ const AdminDashboard = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [roleFilter, setRoleFilter] = useState('');
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showUserProfileModal, setShowUserProfileModal] = useState(false);
+  const [selectedUserProfile, setSelectedUserProfile] = useState(null);
   const [analyticsData, setAnalyticsData] = useState({
     overview: {
       totalDatasets: { value: 0, change: 0, trend: 'up' },
@@ -84,7 +77,6 @@ const AdminDashboard = () => {
   const [dateFilter, setDateFilter] = useState('');
   
   // Connectivity & Usage state
-  const [connectivityLoading, setConnectivityLoading] = useState(false);
   const [systemStatus, setSystemStatus] = useState({
     mongodb: { status: 'checking', responseTime: 0 },
     flaskService: { status: 'checking', responseTime: 0 },
@@ -238,6 +230,7 @@ const AdminDashboard = () => {
       
       return () => clearInterval(interval);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Refetch API metrics when period changes
@@ -245,32 +238,21 @@ const AdminDashboard = () => {
     if (activeTab === 'connectivity' && usagePeriod) {
       fetchApiMetrics(usagePeriod);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usagePeriod]);
 
   // Helper functions
   const handleLogout = () => {
+    setShowLogoutModal(false); // Close modal
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/admin-login';
+    toast.success("👋 Admin logged out successfully! Redirecting to home...");
+    // Redirect to landing page
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1000); // Delay to show the toast
   };
 
-  const handleRefresh = () => {
-    setLoading(true);
-    // Re-fetch analytics data
-    const fetchAnalyticsData = async () => {
-      try {
-        const data = await analytics.getAnalyticsData('7d');
-        if (data && data.success) {
-          setAnalyticsData(data.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch analytics data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAnalyticsData();
-  };
 
 
   const toggleSidebar = () => {
@@ -453,15 +435,12 @@ const AdminDashboard = () => {
   // Fetch connectivity status
   const fetchConnectivityStatus = async () => {
     try {
-      setConnectivityLoading(true);
       const response = await api.get('admin/connectivity/status');
       if (response && response.success) {
         setSystemStatus(response.data);
       }
     } catch (error) {
       console.error('❌ Error fetching connectivity status:', error);
-    } finally {
-      setConnectivityLoading(false);
     }
   };
 
@@ -1555,18 +1534,6 @@ const AdminDashboard = () => {
 
               {/* Header Actions */}
               <div className="flex items-center space-x-1 md:space-x-3">
-                {/* Refresh Button - Hidden on mobile */}
-                {!isMobile && (
-                  <button
-                    onClick={handleRefresh}
-                    className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
-                    title="Refresh Data"
-                  >
-                    <RefreshCw className="text-gray-600 group-hover:text-blue-600 transition-colors" size={18} />
-                  </button>
-                )}
-
-
                 {/* Admin Avatar */}
                 <div className="relative group">
                   <div className="w-7 h-7 md:w-8 md:h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-105">
@@ -1609,20 +1576,6 @@ const AdminDashboard = () => {
                           <p className="text-gray-600 mt-1">Manage TANAW user accounts and business information</p>
                         </div>
                         
-                        {/* TANAW-specific Actions */}
-                        <div className="flex flex-wrap gap-2 mt-4 sm:mt-0">
-                          <button 
-                            onClick={() => {
-                              console.log('🔄 Manual refresh clicked');
-                              fetchUsers();
-                            }}
-                            disabled={usersLoading}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <RefreshCw className={`inline w-4 h-4 mr-2 ${usersLoading ? 'animate-spin' : ''}`} />
-                            {usersLoading ? 'Loading...' : 'Refresh Data'}
-                          </button>
-                        </div>
                       </div>
                       
                       {/* TANAW-specific Filters */}
@@ -1739,16 +1692,10 @@ const AdminDashboard = () => {
                                     </div>
                                   </td>
                                   <td className="px-3 py-4 text-sm font-medium">
-                                    <div className="flex items-center space-x-1">
-                                      {/* View User Details */}
-                                      <button className="flex items-center px-2 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-all duration-200 hover:scale-105">
-                                        <Eye className="w-3 h-3 mr-1" />
-                                        <span className="hidden sm:inline">View</span>
-                                      </button>
-                                      
-                                      {/* TANAW-specific Actions */}
+                                    <div className="flex items-center space-x-2">
+                                      {/* Actions Dropdown */}
                                       <div className="relative group">
-                                        <button className="flex items-center px-2 py-1.5 text-xs bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:scale-105">
+                                        <button className="flex items-center px-3 py-2 text-xs bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:scale-105 border border-gray-200">
                                           <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                           </svg>
@@ -1758,26 +1705,25 @@ const AdminDashboard = () => {
                                           </svg>
                                         </button>
                                         
-                                        {/* TANAW Actions Dropdown */}
-                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                                        {/* Actions Dropdown Menu - Fixed z-index */}
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                           <div className="py-1">
-                                            <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                              <UserPlus className="w-4 h-4 mr-3" />
+                                            <button 
+                                              onClick={() => {
+                                                setSelectedUserProfile(user);
+                                                setShowUserProfileModal(true);
+                                              }}
+                                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
+                                            >
+                                              <UserPlus className="w-4 h-4 mr-3 text-blue-600" />
                                               View Profile
                                             </button>
-                                            <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                              <Shield className="w-4 h-4 mr-3" />
-                                              Change Role
-                                            </button>
-                                            <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                              <FileText className="w-4 h-4 mr-3" />
-                                              View Business
-                                            </button>
+                                            <div className="border-t border-gray-100"></div>
                                             <button 
                                               onClick={() => handleDeleteUser(user._id)}
-                                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                                             >
-                                              <LogOut className="w-4 h-4 mr-3" />
+                                              <Trash2 className="w-4 h-4 mr-3" />
                                               Delete User
                                             </button>
                                           </div>
@@ -1902,6 +1848,155 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {/* User Profile Modal */}
+      {showUserProfileModal && selectedUserProfile && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200/50 p-6 max-w-2xl w-full relative z-[101] max-h-[90vh] overflow-y-auto">
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setShowUserProfileModal(false);
+                setSelectedUserProfile(null);
+              }}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X size={20} className="text-gray-500" />
+            </button>
+
+            {/* Profile Header */}
+            <div className="flex items-center space-x-4 mb-6 pb-6 border-b border-gray-200">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-white text-3xl font-bold">
+                  {selectedUserProfile.fullName ? selectedUserProfile.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
+                </span>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {selectedUserProfile.fullName || 'No Name Provided'}
+                </h2>
+                <p className="text-gray-500">{selectedUserProfile.email}</p>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold mt-2 ${
+                  selectedUserProfile.role === 'admin' 
+                    ? 'bg-purple-100 text-purple-800' 
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {selectedUserProfile.role === 'admin' ? 'Admin' : 'User'}
+                </span>
+              </div>
+            </div>
+
+            {/* Profile Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Full Name</label>
+                  <p className="text-sm font-medium text-gray-900 mt-1">
+                    {selectedUserProfile.fullName || 'Not provided'}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Business Name</label>
+                  <p className="text-sm font-medium text-gray-900 mt-1">
+                    {selectedUserProfile.businessName || 'Not provided'}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Email Address</label>
+                  <p className="text-sm font-medium text-gray-900 mt-1">
+                    {selectedUserProfile.email}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Role</label>
+                  <p className="text-sm font-medium text-gray-900 mt-1">
+                    {selectedUserProfile.role === 'admin' ? 'Administrator' : 'User'}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Datasets</label>
+                  <p className="text-sm font-medium text-gray-900 mt-1">
+                    {selectedUserProfile.datasetCount || 0} dataset(s)
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Registration Date</label>
+                  <p className="text-sm font-medium text-gray-900 mt-1">
+                    {selectedUserProfile.createdAt ? new Date(selectedUserProfile.createdAt).toLocaleDateString() : 'Unknown'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedUserProfile.createdAt ? new Date(selectedUserProfile.createdAt).toLocaleTimeString() : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Activity Summary */}
+              <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">Activity Summary</h4>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {selectedUserProfile.datasetCount || 0}
+                    </div>
+                    <div className="text-xs text-gray-600">Datasets</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {selectedUserProfile.chartsGenerated || 0}
+                    </div>
+                    <div className="text-xs text-gray-600">Charts</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {selectedUserProfile.role === 'admin' ? 'Admin' : 'Active'}
+                    </div>
+                    <div className="text-xs text-gray-600">Status</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* User ID (for reference) */}
+              <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+                <label className="text-xs font-semibold text-gray-500 uppercase">User ID</label>
+                <p className="text-xs font-mono text-gray-600 mt-1 break-all">
+                  {selectedUserProfile._id}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowUserProfileModal(false);
+                  setSelectedUserProfile(null);
+                }}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  handleDeleteUser(selectedUserProfile._id);
+                  setShowUserProfileModal(false);
+                  setSelectedUserProfile(null);
+                }}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Logout Modal - Responsive */}
       {showLogoutModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
@@ -1913,7 +2008,7 @@ const AdminDashboard = () => {
               <h3 className="text-base md:text-lg font-bold text-gray-800">Confirm Logout</h3>
             </div>
             <p className="text-sm md:text-base text-gray-600 mb-4 md:mb-6">
-              Are you sure you want to logout from the admin dashboard? You'll need to login again to access the admin panel.
+              Are you sure you want to logout from the admin dashboard? You'll be redirected to the home page.
             </p>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
@@ -1938,6 +2033,25 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#4ade80',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
     </div>
   );
 };

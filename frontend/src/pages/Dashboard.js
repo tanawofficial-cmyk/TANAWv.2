@@ -1,9 +1,9 @@
 //Dashboard.js 
 import React, { useState, useEffect } from "react";
-import api, { analyticsApi, setSessionExpiredCallback } from "../api";
+import api, { setSessionExpiredCallback } from "../api";
 import analytics from "../services/analytics";
 import toast, { Toaster } from "react-hot-toast";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, ComposedChart, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
 import StickyHeader from "../components/StickyHeader";
 import FeedbackModal from "../components/FeedbackModal";
 
@@ -15,7 +15,6 @@ const UserDashboard = () => {
   const [dateFilter, setDateFilter] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState(null);
   const [progressStep, setProgressStep] = useState("upload");
   
   // 🆕 Dataset-specific states
@@ -228,10 +227,39 @@ const UserDashboard = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showDownloadMenu]);
 
-  // ✅ Handle file input
+  // ✅ Handle file input with validation
   const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+    const file = e.target.files[0];
+    
+    if (!file) return;
+    
+    // Validate file type
+    const allowedTypes = [
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    
+    const allowedExtensions = ['.csv', '.xls', '.xlsx'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      toast.error('❌ Invalid file type. Please upload CSV or Excel (.csv, .xls, .xlsx) files only.');
+      e.target.value = ''; // Clear the input
+      return;
+    }
+    
+    // Validate file size (max 10MB for performance)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast.error('❌ File too large. Please upload files smaller than 10MB for optimal performance.');
+      e.target.value = '';
+      return;
+    }
+    
+    setSelectedFile(file);
     setProgressStep("upload");
+    toast.success(`✓ File selected: ${file.name}`, { duration: 2000 });
   };
 
 
@@ -299,8 +327,7 @@ const UserDashboard = () => {
 
       // Check for success indicators - handle both old and new response formats
       // Use loose equality to handle type coercion
-      const isSuccess = data.success == true || data.status == 'completed' || data.processed == true || 
-                       data.success === true || data.status === 'completed' || data.processed === true;
+      const isSuccess = data.success === true || data.status === 'completed' || data.processed === true;
       console.log("🔍 Success validation:", { 
         success: data.success, 
         successType: typeof data.success,
@@ -313,7 +340,28 @@ const UserDashboard = () => {
       
       if (!isSuccess) {
         console.error("⚠️ Upload failed:", data);
-        toast.error(data?.message || "Upload failed. Please try again.");
+        
+        // Handle specific fallback errors with helpful messages
+        const fallbackMessages = {
+          'empty_dataset': '📋 Your file is empty. Please upload a file with data rows.',
+          'no_columns': '📋 No columns detected. Please check your file format.',
+          'insufficient_rows': '📋 Too few rows. Please upload a file with at least 2 rows of data.',
+          'no_usable_columns': '🤔 We couldn\'t identify any usable columns in your dataset.\n\n💡 Tip: Ensure your file has columns like:\n• Date/Time columns\n• Sales/Amount columns\n• Product/Item names\n• Quantity values',
+          'no_valid_data_after_cleaning': '⚠️ Your data contains invalid formats.\n\n📝 Please check for:\n• Valid date formats (e.g., 2024-01-15)\n• Numeric values for sales/amounts (no text)',
+          'insufficient_valid_rows': '⚠️ Too few valid rows after data cleaning.\n\n💡 Please check your data quality and formats.',
+          'no_charts_generated': `📊 No charts could be generated from your dataset.\n\n${data.suggestion || 'Please ensure your dataset has the required columns for analytics.'}`
+        };
+        
+        const fallbackReason = data.fallback_reason || data.fallbackReason;
+        const errorMessage = fallbackMessages[fallbackReason] || data?.message || "Upload failed. Please try again.";
+        
+        toast.error(errorMessage, { 
+          duration: 6000,
+          style: {
+            maxWidth: '500px',
+            whiteSpace: 'pre-line' // Allows \n to create line breaks
+          }
+        });
         return;
       }
 
@@ -341,26 +389,12 @@ const UserDashboard = () => {
         toast.success("✅ File analyzed successfully!");
         setProgressStep("visualization");
         
-        // Store dataset information
-        const datasetInfo = {
-          id: data.analysis_id || Date.now().toString(),
-          analysis_id: data.analysis_id,
-          name: selectedFile.name,
-          fileName: selectedFile.name,
-          uploadDate: new Date().toLocaleDateString(),
-          uploadTime: new Date().toLocaleTimeString(),
-          analysisId: data.analysis_id,
-          analysisData: data,
-          status: 'completed'
-        };
-        
         // 🔄 Refresh datasets from backend (dataset is already saved)
         setTimeout(() => {
           loadUserDatasets();
           // ✅ Reset progress bar and clear file selection after successful upload
           setProgressStep("upload");
           setSelectedFile(null);
-          setUploadResult(null);
         }, 1000);
 
         // 💬 Track uploads and show feedback modal every 3 uploads
@@ -377,8 +411,6 @@ const UserDashboard = () => {
           }, 2000); // Show after 2 seconds to let user see success message
         }
       }
-
-      setUploadResult(data);
     } catch (err) {
       console.error("❌ Upload failed", err);
       toast.error(err.response?.data?.message || "Upload failed. Please try again.");
@@ -401,10 +433,27 @@ const UserDashboard = () => {
       dataset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       dataset.fileName.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Date filter - compare Date objects
-    const matchesDate = !dateFilter || 
-      dataset.uploadDate >= new Date(dateFilter);
-    
+    // Date filter - compare dates properly
+    let matchesDate = true;
+    if (dateFilter) {
+      try {
+        // Convert both to Date objects for comparison
+        const filterDate = new Date(dateFilter);
+        const datasetDate = dataset.uploadDate instanceof Date 
+          ? dataset.uploadDate 
+          : new Date(dataset.uploadDate);
+        
+        // Compare only the date part (ignore time)
+        filterDate.setHours(0, 0, 0, 0);
+        datasetDate.setHours(0, 0, 0, 0);
+        
+        // Show datasets uploaded on or after the filter date
+        matchesDate = datasetDate >= filterDate;
+      } catch (error) {
+        console.error("❌ Date comparison error:", error);
+        matchesDate = true; // If error, don't filter out
+      }
+    }
     
     return matchesSearch && matchesDate;
   });
@@ -487,8 +536,13 @@ const UserDashboard = () => {
 
   // 🚪 Handle Logout
   const handleLogout = () => {
+    setShowLogoutModal(false); // Close modal
     localStorage.removeItem("token");
-    window.location.href = "/login";
+    toast.success("👋 Logged out successfully! Redirecting to home...");
+    // Redirect to landing page
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 1000); // Delay to show the toast
   };
 
   // 📥 Download Handlers
@@ -838,8 +892,8 @@ const UserDashboard = () => {
     return csv;
   };
 
-  // 📁 Dataset History Management
-  const addDatasetToHistory = async (datasetInfo) => {
+  // 📁 Dataset History Management (unused - datasets fetched from backend)
+  /* const addDatasetToHistory = async (datasetInfo) => {
     console.log("📁 Adding dataset to history:", datasetInfo);
     console.log("📁 Analysis ID from datasetInfo:", datasetInfo.analysis_id);
     console.log("📁 Analysis object:", datasetInfo.analysis);
@@ -903,7 +957,7 @@ const UserDashboard = () => {
     
     // 🔄 Refresh datasets from backend to ensure consistency
     // Note: loadUserDatasets() is already called in handleFileUpload, no need to call again
-  };
+  }; */
 
   // 📊 Chart Rendering Function - Updated for Analytics Engine
   const renderChart = (chart) => {
@@ -1336,6 +1390,15 @@ const UserDashboard = () => {
       console.log("📊 Found charts:", charts);
       console.log("📊 Charts length:", charts.length);
       setCharts(charts);
+      
+      // 📊 Success message after charts loaded
+      if (charts && charts.length > 0) {
+        const domain = dataset.analysis?.domain || dataset.analysis?.context_detection?.detected_context || 'your';
+        toast.success(`✅ Loaded ${charts.length} ${domain.toUpperCase()} analytics charts!`, {
+          duration: 3000,
+          icon: '📊'
+        });
+      }
       
       // 📊 Track chart generation for each chart loaded
       if (charts && charts.length > 0) {
@@ -2374,7 +2437,7 @@ const UserDashboard = () => {
               </h2>
               
               <p className="text-sm text-gray-600 mb-6 text-center">
-                Are you sure you want to logout? You will need to log in again to access your datasets and analytics.
+                Are you sure you want to logout? You'll be redirected to the home page.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3">
@@ -2418,9 +2481,6 @@ const UserDashboard = () => {
           </svg>
         </button>
       )}
-
-      {/* Toast Notifications */}
-      <Toaster position="top-right" />
 
       {/* 💬 Feedback Modal */}
       <FeedbackModal
