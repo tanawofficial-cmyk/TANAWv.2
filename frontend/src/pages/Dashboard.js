@@ -1520,11 +1520,24 @@ const UserDashboard = () => {
   // 🔄 Handle closing analytics dashboard
   const handleCloseAnalytics = () => {
     console.log("🔄 Closing analytics dashboard");
+    
+    // Store dataset name for feedback
+    const currentDatasetName = selectedDatasetData?.name || datasets.find(d => d.id === selectedDatasetId)?.name;
+    
     setSelectedDatasetId(null);
     setSelectedDatasetData(null);
     setCharts([]);
     // Reset progress bar to upload state
     setProgressStep("upload");
+    
+    // Show feedback modal after viewing analytics
+    // Random chance (30%) to avoid overwhelming users
+    if (Math.random() < 0.3) {
+      setTimeout(() => {
+        console.log('🎯 Triggering feedback modal after viewing analytics');
+        setShowFeedbackModal(true);
+      }, 1500); // Show after 1.5 seconds
+    }
   };
 
   // 📊 Handle chart display mode toggle
@@ -2607,6 +2620,7 @@ const UserDashboard = () => {
         isOpen={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
         onFeedbackSubmitted={handleFeedbackSubmitted}
+        datasetName={selectedDatasetData?.name || datasets.find(d => d.id === selectedDatasetId)?.name}
       />
     </div>
   );
