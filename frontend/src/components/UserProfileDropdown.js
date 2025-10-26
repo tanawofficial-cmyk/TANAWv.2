@@ -73,15 +73,28 @@ const UserProfileDropdown = ({ user, onUserUpdate, onLogout }) => {
     try {
       const response = await api.put("/users/me", profileForm);
       
-      if (response.data.success) {
+      console.log("Profile update response:", response);
+      
+      if (response && response.success) {
         toast.success("✅ Profile updated successfully!");
-        onUserUpdate(response.data.data);
+        
+        // Update user data in parent component
+        if (onUserUpdate) {
+          onUserUpdate(response.data || response.user);
+        }
+        
+        // Update localStorage
+        const updatedUser = response.data || response.user;
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        
         setShowEditProfileModal(false);
         setIsDropdownOpen(false);
+      } else {
+        toast.error(response?.message || "Failed to update profile");
       }
     } catch (error) {
       console.error("❌ Profile update error:", error);
-      toast.error(error.response?.data?.message || "Failed to update profile");
+      toast.error(error?.message || "Failed to update profile");
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -111,7 +124,9 @@ const UserProfileDropdown = ({ user, onUserUpdate, onLogout }) => {
         newPassword: passwordForm.newPassword
       });
 
-      if (response.data.success) {
+      console.log("Password change response:", response);
+
+      if (response && response.success) {
         toast.success("✅ Password changed successfully!");
         setPasswordForm({
           currentPassword: "",
@@ -120,10 +135,12 @@ const UserProfileDropdown = ({ user, onUserUpdate, onLogout }) => {
         });
         setShowChangePasswordModal(false);
         setIsDropdownOpen(false);
+      } else {
+        toast.error(response?.message || "Failed to change password");
       }
     } catch (error) {
       console.error("❌ Password change error:", error);
-      toast.error(error.response?.data?.message || "Failed to change password");
+      toast.error(error?.message || "Failed to change password");
     } finally {
       setIsChangingPassword(false);
     }

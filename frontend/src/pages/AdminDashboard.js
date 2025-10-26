@@ -174,6 +174,7 @@ const AdminDashboard = () => {
       console.log('💬 Active tab changed to userFeedback, fetching feedback...');
       fetchFeedback();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Filter feedback based on rating, date, and search
@@ -270,7 +271,8 @@ const AdminDashboard = () => {
       console.log('🔍 Fetching users from API...');
       console.log('🔑 Token:', localStorage.getItem('token') ? 'Present' : 'Missing');
       
-      const response = await fetch('http://localhost:5000/api/admin/users', {
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/admin/users`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -306,7 +308,8 @@ const AdminDashboard = () => {
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/admin/users/${userId}`, {
+        const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`

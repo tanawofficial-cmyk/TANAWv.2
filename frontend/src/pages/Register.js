@@ -42,7 +42,9 @@ const RegistrationForm = () => {
 
     try {
       setLoading(true);
-      const { data } = await api.post("/auth/register", {
+      setErrorMessage("");
+      
+      const response = await api.post("/auth/register", {
         fullName: formData.fullName,
         businessName: formData.businessName,
         email: formData.email,
@@ -51,23 +53,36 @@ const RegistrationForm = () => {
         role: "user", // Always register as a normal user
       });
 
-      if (data.success) {
-        setErrorMessage("");
+      console.log("Registration response:", response);
+
+      if (response && response.success) {
+        // Clear form fields
+        setFormData({
+          fullName: "",
+          businessName: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+        });
+        setCaptchaToken(null);
+        
         toast.success("Registration successful! Redirecting to login...", {
           duration: 2000,
           icon: "🎉",
         });
+        
         setTimeout(() => {
           window.location.href = "/login";
-        }, 1500);
+        }, 2000);
       } else {
-        setErrorMessage(data.message);
+        setErrorMessage(response?.message || "Registration failed");
+        toast.error(response?.message || "Registration failed. Please try again.");
       }
     } catch (err) {
-      console.error(err);
-      toast.error(
-        err.response?.data?.message || "Registration failed. Try again."
-      );
+      console.error("Registration error:", err);
+      const errorMsg = err?.message || "Registration failed. Please try again.";
+      setErrorMessage(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }

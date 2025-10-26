@@ -124,7 +124,8 @@ class AnalyticsService {
   // Send event to backend
   async sendEvent(event) {
     try {
-      const response = await fetch('http://localhost:5000/api/analytics/track', {
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/analytics/track`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,7 +144,8 @@ class AnalyticsService {
   // Get analytics data for admin dashboard
   async getAnalyticsData(timeRange = '7d') {
     try {
-      const response = await fetch(`http://localhost:5000/api/analytics/data?range=${timeRange}`);
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/analytics/data?range=${timeRange}`);
       if (response.ok) {
         return await response.json();
       }
@@ -156,7 +158,8 @@ class AnalyticsService {
   // Get user metrics
   async getUserMetrics() {
     try {
-      const response = await fetch('http://localhost:5000/api/analytics/users');
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/analytics/users`);
       if (response.ok) {
         return await response.json();
       }
