@@ -142,12 +142,22 @@ class AnalyticsService {
   }
 
   // Get analytics data for admin dashboard
-  async getAnalyticsData(timeRange = '7d') {
+  async getAnalyticsData(timeRange = '7d', specificDate = null) {
     try {
       const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${API_BASE_URL}/analytics/data?range=${timeRange}`);
+      let url = `${API_BASE_URL}/analytics/data?range=${timeRange}`;
+      
+      // Add specific date parameter for historical data filtering
+      if (specificDate) {
+        url += `&date=${specificDate}`;
+        console.log(`📅 Fetching analytics data for specific date: ${specificDate}`);
+      }
+      
+      const response = await fetch(url);
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        console.log(`📊 Analytics data fetched:`, data);
+        return data;
       }
     } catch (error) {
       console.error('Failed to fetch analytics data:', error);

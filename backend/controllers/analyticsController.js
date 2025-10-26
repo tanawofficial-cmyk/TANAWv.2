@@ -39,36 +39,56 @@ export const trackEvent = async (req, res) => {
 // Get analytics data for admin dashboard
 export const getAnalyticsData = async (req, res) => {
   try {
-    const { range = '7d' } = req.query;
+    const { range = '7d', date } = req.query;
     
     // Calculate date range
     const now = new Date();
-    let startDate;
+    let startDate, endDate;
     
-    switch (range) {
-      case '1d':
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // If specific date is provided, filter for that single day only
+    if (date) {
+      startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      console.log(`📅 Filtering analytics for specific date: ${date}`);
+      console.log(`   Start: ${startDate.toISOString()}`);
+      console.log(`   End: ${endDate.toISOString()}`);
+    } else {
+      // Normal range filtering
+      switch (range) {
+        case '1d':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      }
+      endDate = now;
     }
+
+    // Build query based on whether we have a specific date or range
+    const timestampQuery = date 
+      ? { $gte: startDate, $lte: endDate }  // Specific date
+      : { $gte: startDate };                 // Range from startDate to now
 
     // Get total datasets (file uploads)
     const totalDatasets = await Analytics.countDocuments({
       type: 'file_upload',
-      timestamp: { $gte: startDate }
+      timestamp: timestampQuery
     });
 
     // Get charts generated
     const chartsGenerated = await Analytics.countDocuments({
       type: 'chart_generation',
-      timestamp: { $gte: startDate }
+      timestamp: timestampQuery
     });
 
     // Get registered users from User model
@@ -84,13 +104,15 @@ export const getAnalyticsData = async (req, res) => {
 
     // Get active users (users with recent activity)
     const activeUsers = await Analytics.distinct('userId', {
-      timestamp: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
+      timestamp: date 
+        ? { $gte: startDate, $lte: endDate }  // Specific date
+        : { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) }  // Last 24h for range
     });
 
     // Get downloads
     const downloads = await Analytics.countDocuments({
       type: 'download',
-      timestamp: { $gte: startDate }
+      timestamp: timestampQuery
     });
 
     // Calculate real growth rates by comparing with previous period
@@ -134,36 +156,59 @@ export const getAnalyticsData = async (req, res) => {
     // Calculate average charts per dataset
     const avgChartsPerDataset = totalDatasets > 0 ? Math.round(chartsGenerated / totalDatasets) : 0;
 
-    // Get daily breakdown for charts (last 7 days)
+    // Get daily breakdown for charts
+    // If specific date, show only that day; otherwise show last 7 days
     const dailyDatasets = [];
     const dailyCharts = [];
     const dailyActiveUsers = [];
     
-    for (let i = 6; i >= 0; i--) {
-      const dayStart = new Date(now);
-      dayStart.setDate(dayStart.getDate() - i);
-      dayStart.setHours(0, 0, 0, 0);
-      
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
-      
+    if (date) {
+      // For specific date, just return that day's data
       const datasetsCount = await Analytics.countDocuments({
         type: 'file_upload',
-        timestamp: { $gte: dayStart, $lte: dayEnd }
+        timestamp: { $gte: startDate, $lte: endDate }
       });
       
       const chartsCount = await Analytics.countDocuments({
         type: 'chart_generation',
-        timestamp: { $gte: dayStart, $lte: dayEnd }
+        timestamp: { $gte: startDate, $lte: endDate }
       });
       
       const activeUsersCount = await Analytics.distinct('userId', {
-        timestamp: { $gte: dayStart, $lte: dayEnd }
+        timestamp: { $gte: startDate, $lte: endDate }
       });
       
       dailyDatasets.push(datasetsCount);
       dailyCharts.push(chartsCount);
       dailyActiveUsers.push(activeUsersCount.length);
+    } else {
+      // Normal 7-day breakdown
+      for (let i = 6; i >= 0; i--) {
+        const dayStart = new Date(now);
+        dayStart.setDate(dayStart.getDate() - i);
+        dayStart.setHours(0, 0, 0, 0);
+        
+        const dayEnd = new Date(dayStart);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        const datasetsCount = await Analytics.countDocuments({
+          type: 'file_upload',
+          timestamp: { $gte: dayStart, $lte: dayEnd }
+        });
+        
+        const chartsCount = await Analytics.countDocuments({
+          type: 'chart_generation',
+          timestamp: { $gte: dayStart, $lte: dayEnd }
+        });
+        
+        const activeUsersCount = await Analytics.distinct('userId', {
+          timestamp: { $gte: dayStart, $lte: dayEnd }
+        });
+        
+        dailyDatasets.push(datasetsCount);
+        dailyCharts.push(chartsCount);
+        dailyActiveUsers.push(activeUsersCount.length);
+      }
     }
 
     const analyticsData = {
