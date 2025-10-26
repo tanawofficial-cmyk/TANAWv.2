@@ -438,18 +438,46 @@ const UserDashboard = () => {
     let matchesDate = true;
     if (dateFilter) {
       try {
+        // Debug logging
+        console.log("📅 Date Filter Debug:", {
+          filterDate: dateFilter,
+          datasetName: dataset.name,
+          datasetUploadDate: dataset.uploadDate,
+          datasetUploadDateType: typeof dataset.uploadDate
+        });
+
         // Convert both to Date objects for comparison
         const filterDate = new Date(dateFilter);
         const datasetDate = dataset.uploadDate instanceof Date 
           ? dataset.uploadDate 
           : new Date(dataset.uploadDate);
         
-        // Compare only the date part (ignore time)
-        filterDate.setHours(0, 0, 0, 0);
-        datasetDate.setHours(0, 0, 0, 0);
-        
-        // Show datasets uploaded on or after the filter date
-        matchesDate = datasetDate >= filterDate;
+        // Check if dates are valid
+        if (isNaN(filterDate.getTime()) || isNaN(datasetDate.getTime())) {
+          console.warn("⚠️ Invalid date detected:", {
+            filterDate,
+            datasetDate,
+            filterDateValid: !isNaN(filterDate.getTime()),
+            datasetDateValid: !isNaN(datasetDate.getTime())
+          });
+          matchesDate = true; // If invalid date, don't filter out
+        } else {
+          // Compare only the date part (ignore time)
+          const filterDateOnly = new Date(filterDate);
+          const datasetDateOnly = new Date(datasetDate);
+          
+          filterDateOnly.setHours(0, 0, 0, 0);
+          datasetDateOnly.setHours(0, 0, 0, 0);
+          
+          // Show datasets uploaded on or after the filter date
+          matchesDate = datasetDateOnly >= filterDateOnly;
+          
+          console.log("📅 Date comparison:", {
+            filterDateOnly: filterDateOnly.toISOString(),
+            datasetDateOnly: datasetDateOnly.toISOString(),
+            matchesDate
+          });
+        }
       } catch (error) {
         console.error("❌ Date comparison error:", error);
         matchesDate = true; // If error, don't filter out
@@ -1437,6 +1465,9 @@ const UserDashboard = () => {
     console.log("🎯 Dataset analysisId:", dataset.analysisId);
     console.log("🎯 Dataset analysisData:", dataset.analysisData);
     
+    // Reset progress bar to upload state
+    setProgressStep("upload");
+    
     setSelectedDatasetId(dataset.id);
     setSelectedDatasetData(dataset.analysisData);
 
@@ -1480,9 +1511,6 @@ const UserDashboard = () => {
         console.log(`📊 Tracked ${charts.length} chart generation events`);
       }
       
-      // Update progress step
-      setProgressStep("visualization");
-      
       toast.success(`📊 Loaded analytics for ${dataset.name}`);
     } else {
       console.error("❌ No analysis data found for dataset:", dataset);
@@ -1497,6 +1525,8 @@ const UserDashboard = () => {
     setSelectedDatasetId(null);
     setSelectedDatasetData(null);
     setCharts([]);
+    // Reset progress bar to upload state
+    setProgressStep("upload");
   };
 
   // 📊 Handle chart display mode toggle
