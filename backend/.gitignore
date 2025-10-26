@@ -3,7 +3,10 @@ node_modules/
 npm-debug.log
 
 # Python (exclude analytics_service for backend)
-analytics_service/
+# analytics_service/  <- Commented out to allow Flask deployment
+analytics_service/__pycache__/
+analytics_service/*.db
+analytics_service/*.pkl
 
 # Cache + ML Models
 *.db

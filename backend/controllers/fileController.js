@@ -8,8 +8,8 @@ import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
 
-// Flask service base URL
-const FLASK_BASE_URL = "http://127.0.0.1:5002";
+// Flask service base URL - use environment variable for production
+const FLASK_BASE_URL = process.env.FLASK_ANALYTICS_URL || "http://127.0.0.1:5002";
 
 // =============== UPLOAD FILE ===============
 const uploadFile = async (req, res) => {
