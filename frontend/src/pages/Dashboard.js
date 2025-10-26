@@ -6,6 +6,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
 import StickyHeader from "../components/StickyHeader";
 import FeedbackModal from "../components/FeedbackModal";
+import html2canvas from 'html2canvas';
 
 
 const UserDashboard = () => {
@@ -602,6 +603,73 @@ const UserDashboard = () => {
     } catch (error) {
       console.error("Error generating Excel:", error);
       toast.error("Failed to generate Excel file");
+    }
+  };
+
+  // 📷 Download individual chart as image with insights
+  const handleDownloadChartImage = async (chartIndex) => {
+    try {
+      const chart = charts[chartIndex];
+      if (!chart) {
+        toast.error("Chart not found");
+        return;
+      }
+
+      toast.loading("📷 Generating chart image...");
+
+      // Get the chart container element
+      const chartElement = document.getElementById(`chart-${chartIndex}`);
+      if (!chartElement) {
+        toast.error("Chart element not found");
+        return;
+      }
+
+      // Use html2canvas to capture the chart
+      const canvas = await html2canvas(chartElement, {
+        scale: 2, // Higher quality
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true
+      });
+
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `TANAW_Chart_${chart.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.png`;
+        link.click();
+        
+        toast.dismiss();
+        toast.success(`📷 Chart "${chart.title}" downloaded as image!`);
+      });
+    } catch (error) {
+      toast.dismiss();
+      console.error("Error downloading chart image:", error);
+      toast.error("Failed to download chart image");
+    }
+  };
+
+  // 📷 Download all charts as images (ZIP would require additional library)
+  const handleDownloadAllChartsAsImages = async () => {
+    if (!charts || charts.length === 0) {
+      toast.error("No charts to download");
+      return;
+    }
+
+    toast.loading(`📷 Generating ${charts.length} chart images...`);
+
+    try {
+      for (let i = 0; i < charts.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Delay between downloads
+        await handleDownloadChartImage(i);
+      }
+      
+      toast.dismiss();
+      toast.success(`📷 Downloaded ${charts.length} chart images successfully!`);
+    } catch (error) {
+      toast.dismiss();
+      console.error("Error downloading all charts:", error);
+      toast.error("Failed to download some charts");
     }
   };
 
@@ -1635,7 +1703,7 @@ const UserDashboard = () => {
                           
                           <button
                             onClick={handleDownloadExcel}
-                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition flex items-center gap-3 rounded-b-lg"
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition flex items-center gap-3 border-b border-gray-100"
                           >
                             <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -1643,6 +1711,19 @@ const UserDashboard = () => {
                             <div>
                               <div className="font-medium text-gray-900">Excel/CSV</div>
                               <div className="text-xs text-gray-500">Spreadsheet with charts data</div>
+                            </div>
+                          </button>
+
+                          <button
+                            onClick={handleDownloadAllChartsAsImages}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition flex items-center gap-3 rounded-b-lg"
+                          >
+                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <div>
+                              <div className="font-medium text-gray-900">All Charts (PNG)</div>
+                              <div className="text-xs text-gray-500">Individual image files ({charts.length} charts)</div>
                             </div>
                           </button>
                         </div>
@@ -1913,13 +1994,24 @@ const UserDashboard = () => {
                       {/* Dynamic Chart Layout - Responsive */}
                       <div className={chartDisplayMode === 'single' ? 'space-y-6 sm:space-y-8' : 'grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6'}>
                         {charts.map((chart, index) => (
-                          <div key={chart.id || `chart-${index}`} className="p-4 sm:p-6 rounded-lg shadow-lg bg-blue-50 border-l-4 border-blue-400">
-                            <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                              <span className="text-2xl sm:text-3xl">{chart.icon || '📊'}</span>
-                              <div className="flex-1 min-w-0">
-                                <h5 className="text-base sm:text-xl font-semibold text-gray-800 truncate">{chart.title || chart.type || `Analytics ${index + 1}`}</h5>
-                                <p className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1 line-clamp-2">{chart.description || 'Analytics visualization'}</p>
-                          </div>
+                          <div id={`chart-${index}`} key={chart.id || `chart-${index}`} className="p-4 sm:p-6 rounded-lg shadow-lg bg-blue-50 border-l-4 border-blue-400">
+                            <div className="flex items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+                              <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                                <span className="text-2xl sm:text-3xl">{chart.icon || '📊'}</span>
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="text-base sm:text-xl font-semibold text-gray-800 truncate">{chart.title || chart.type || `Analytics ${index + 1}`}</h5>
+                                  <p className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1 line-clamp-2">{chart.description || 'Analytics visualization'}</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleDownloadChartImage(index)}
+                                className="flex-shrink-0 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                                title="Download chart as image"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                              </button>
                         </div>
                         
                         {/* Brief Description - User-Friendly Explanation */}
