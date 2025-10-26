@@ -781,9 +781,105 @@ const AdminDashboard = () => {
         ? ((feedbackData.filter(f => f.rating === rating).length / feedbackData.length) * 100).toFixed(0)
         : 0
     }));
+    
+    // Calculate AI-specific average ratings
+    const calculateAIAverages = () => {
+      const aiRatings = { charts: [], forecasts: [], insights: [], aiQuality: [] };
+      
+      feedbackData.forEach(feedback => {
+        if (!feedback.message) return;
+        
+        const chartsMatch = feedback.message.match(/\[Charts: (\d+)\/5\]/);
+        const forecastsMatch = feedback.message.match(/\[Forecasts: (\d+)\/5\]/);
+        const insightsMatch = feedback.message.match(/\[Insights: (\d+)\/5\]/);
+        const aiQualityMatch = feedback.message.match(/\[AI Quality: ([\d.]+)\/5\]/);
+        
+        if (chartsMatch) aiRatings.charts.push(parseInt(chartsMatch[1]));
+        if (forecastsMatch) aiRatings.forecasts.push(parseInt(forecastsMatch[1]));
+        if (insightsMatch) aiRatings.insights.push(parseInt(insightsMatch[1]));
+        if (aiQualityMatch) aiRatings.aiQuality.push(parseFloat(aiQualityMatch[1]));
+      });
+      
+      return {
+        charts: aiRatings.charts.length > 0 ? (aiRatings.charts.reduce((a, b) => a + b, 0) / aiRatings.charts.length).toFixed(1) : 'N/A',
+        forecasts: aiRatings.forecasts.length > 0 ? (aiRatings.forecasts.reduce((a, b) => a + b, 0) / aiRatings.forecasts.length).toFixed(1) : 'N/A',
+        insights: aiRatings.insights.length > 0 ? (aiRatings.insights.reduce((a, b) => a + b, 0) / aiRatings.insights.length).toFixed(1) : 'N/A',
+        aiQuality: aiRatings.aiQuality.length > 0 ? (aiRatings.aiQuality.reduce((a, b) => a + b, 0) / aiRatings.aiQuality.length).toFixed(1) : 'N/A',
+        count: aiRatings.charts.length
+      };
+    };
+    
+    const aiAverages = calculateAIAverages();
 
     return (
     <div className="space-y-6">
+        {/* AI Quality Analytics (NEW!) */}
+        {aiAverages.count > 0 && (
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl shadow-lg border border-purple-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">AI Analytics Quality Metrics</h3>
+                <p className="text-sm text-gray-600">{aiAverages.count} detailed AI feedback submissions</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white/80 rounded-xl p-4 border border-purple-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span className="text-xs font-medium text-gray-600">Overall AI Quality</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold text-purple-600">{aiAverages.aiQuality}</p>
+                  <span className="text-sm text-gray-500">/ 5.0</span>
+                </div>
+              </div>
+              <div className="bg-white/80 rounded-xl p-4 border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <span className="text-xs font-medium text-gray-600">Chart Quality</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold text-blue-600">{aiAverages.charts}</p>
+                  <span className="text-sm text-gray-500">/ 5.0</span>
+                </div>
+              </div>
+              <div className="bg-white/80 rounded-xl p-4 border border-green-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  <span className="text-xs font-medium text-gray-600">Forecast Accuracy</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold text-green-600">{aiAverages.forecasts}</p>
+                  <span className="text-sm text-gray-500">/ 5.0</span>
+                </div>
+              </div>
+              <div className="bg-white/80 rounded-xl p-4 border border-pink-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-xs font-medium text-gray-600">Insights Helpfulness</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold text-pink-600">{aiAverages.insights}</p>
+                  <span className="text-sm text-gray-500">/ 5.0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Feedback Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Average Rating Card */}
@@ -1021,7 +1117,49 @@ const AdminDashboard = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredFeedback.map((feedback) => (
+                  filteredFeedback.map((feedback) => {
+                    // Parse AI-specific ratings from message
+                    const parseAIRatings = (message) => {
+                      const ratings = {
+                        aiQuality: null,
+                        charts: null,
+                        forecasts: null,
+                        insights: null,
+                        dataset: null,
+                        cleanMessage: message
+                      };
+                      
+                      if (!message) return ratings;
+                      
+                      // Extract ratings using regex
+                      const aiQualityMatch = message.match(/\[AI Quality: ([\d.]+)\/5\]/);
+                      const chartsMatch = message.match(/\[Charts: (\d+)\/5\]/);
+                      const forecastsMatch = message.match(/\[Forecasts: (\d+)\/5\]/);
+                      const insightsMatch = message.match(/\[Insights: (\d+)\/5\]/);
+                      const datasetMatch = message.match(/\[Dataset: ([^\]]+)\]/);
+                      
+                      if (aiQualityMatch) ratings.aiQuality = parseFloat(aiQualityMatch[1]);
+                      if (chartsMatch) ratings.charts = parseInt(chartsMatch[1]);
+                      if (forecastsMatch) ratings.forecasts = parseInt(forecastsMatch[1]);
+                      if (insightsMatch) ratings.insights = parseInt(insightsMatch[1]);
+                      if (datasetMatch) ratings.dataset = datasetMatch[1];
+                      
+                      // Remove metadata from message
+                      ratings.cleanMessage = message
+                        .replace(/\[AI Quality: [\d.]+\/5\]/g, '')
+                        .replace(/\[Charts: \d+\/5\]/g, '')
+                        .replace(/\[Forecasts: \d+\/5\]/g, '')
+                        .replace(/\[Insights: \d+\/5\]/g, '')
+                        .replace(/\[Dataset: [^\]]+\]/g, '')
+                        .trim();
+                      
+                      return ratings;
+                    };
+                    
+                    const aiRatings = parseAIRatings(feedback.message);
+                    const hasAIRatings = aiRatings.aiQuality || aiRatings.charts || aiRatings.forecasts || aiRatings.insights;
+                    
+                    return (
                     <tr key={feedback._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -1036,30 +1174,91 @@ const AdminDashboard = () => {
                             <div className="text-sm font-medium text-gray-900">{feedback.userId?.fullName || 'Unknown User'}</div>
                             <div className="text-sm text-gray-500">{feedback.userId?.email || 'No Email'}</div>
                             <div className="text-xs text-gray-400">{feedback.userId?.businessName || 'No Business'}</div>
+                            {aiRatings.dataset && (
+                              <div className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                {aiRatings.dataset}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${
-                                i < feedback.rating
-                                  ? 'text-yellow-400 fill-yellow-400'
-                                  : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
-                          <span className="ml-1 text-sm font-medium text-gray-700">
-                            {feedback.rating}.0
-                          </span>
+                        <div className="space-y-2">
+                          {/* Overall Rating */}
+                          <div>
+                            <div className="flex items-center gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${
+                                    i < feedback.rating
+                                      ? 'text-yellow-400 fill-yellow-400'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                              <span className="ml-1 text-sm font-medium text-gray-700">
+                                {feedback.rating}.0
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-500">Overall</span>
+                          </div>
+                          
+                          {/* AI Quality Breakdown */}
+                          {hasAIRatings && (
+                            <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
+                              {aiRatings.aiQuality && (
+                                <div className="flex items-center gap-2">
+                                  <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                  </svg>
+                                  <span className="text-xs font-medium text-gray-700">AI: {aiRatings.aiQuality.toFixed(1)}/5</span>
+                                </div>
+                              )}
+                              {aiRatings.charts && (
+                                <div className="flex items-center gap-2">
+                                  <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                  </svg>
+                                  <span className="text-xs font-medium text-gray-700">Charts: {aiRatings.charts}/5</span>
+                                </div>
+                              )}
+                              {aiRatings.forecasts && (
+                                <div className="flex items-center gap-2">
+                                  <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                  </svg>
+                                  <span className="text-xs font-medium text-gray-700">Forecasts: {aiRatings.forecasts}/5</span>
+                                </div>
+                              )}
+                              {aiRatings.insights && (
+                                <div className="flex items-center gap-2">
+                                  <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span className="text-xs font-medium text-gray-700">Insights: {aiRatings.insights}/5</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <p className="text-sm text-gray-900 max-w-md line-clamp-2">
-                          {feedback.message || 'No message provided'}
-                        </p>
+                        <div className="space-y-2">
+                          {aiRatings.cleanMessage && (
+                            <p className="text-sm text-gray-900 max-w-md">
+                              {aiRatings.cleanMessage}
+                            </p>
+                          )}
+                          {feedback.type === 'ai_analytics_feedback' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                              🧠 AI Analytics Feedback
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
@@ -1079,7 +1278,8 @@ const AdminDashboard = () => {
                         </button>
                       </td>
                     </tr>
-                  ))
+                  );
+                  })
                 )}
               </tbody>
             </table>
