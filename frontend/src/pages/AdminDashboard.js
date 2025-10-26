@@ -47,6 +47,7 @@ const AdminDashboard = () => {
   const [userDateFilter, setUserDateFilter] = useState('');
   const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
   const [analyticsData, setAnalyticsData] = useState({
     overview: {
       totalDatasets: { value: 0, change: 0, trend: 'up' },
@@ -260,6 +261,18 @@ const AdminDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usagePeriod]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openDropdownId && !event.target.closest('.relative')) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openDropdownId]);
+
   // Helper functions
   const handleLogout = () => {
     setShowLogoutModal(false); // Close modal
@@ -326,6 +339,7 @@ const AdminDashboard = () => {
   const handleDeleteUser = async (userId) => {
     const userToDelete = users.find(u => u._id === userId);
     const userName = userToDelete?.fullName || userToDelete?.businessName || 'this user';
+    const userEmail = userToDelete?.email;
     
     if (window.confirm(`Are you sure you want to delete ${userName}? This action cannot be undone and the user will be notified via email.`)) {
       try {
@@ -339,17 +353,34 @@ const AdminDashboard = () => {
         });
         
         const data = await response.json();
+        console.log('Delete user response:', data);
         
         if (response.ok && data.success) {
-          toast.success(`✅ User deleted successfully! Notification email sent to ${userToDelete?.email}`);
-          setUsers(users.filter(user => user._id !== userId));
-          setFilteredUsers(filteredUsers.filter(user => user._id !== userId));
+          toast.success(`✅ User deleted! Notification email sent to ${userEmail}`);
+          
+          // Remove user from both lists immediately
+          const updatedUsers = users.filter(user => user._id !== userId);
+          setUsers(updatedUsers);
+          setFilteredUsers(updatedUsers.filter(user => {
+            let match = true;
+            if (roleFilter) match = match && user.role === roleFilter;
+            if (userSearchQuery) {
+              match = match && (
+                user.fullName.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                user.email.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                user.businessName.toLowerCase().includes(userSearchQuery.toLowerCase())
+              );
+            }
+            return match;
+          }));
+          
+          console.log('✅ User removed from list');
         } else {
           toast.error(data.message || 'Failed to delete user');
         }
       } catch (error) {
         console.error('❌ Error deleting user:', error);
-        toast.error('Failed to delete user. Please try again.');
+        toast.error(error?.message || 'Failed to delete user. Please try again.');
       }
     }
   };
@@ -1729,9 +1760,12 @@ const AdminDashboard = () => {
                                   </td>
                                   <td className="px-3 py-4 text-sm font-medium">
                                     <div className="flex items-center space-x-2">
-                                      {/* Actions Dropdown */}
-                                      <div className="relative group">
-                                        <button className="flex items-center px-3 py-2 text-xs bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:scale-105 border border-gray-200">
+                                      {/* Actions Dropdown - Click-based */}
+                                      <div className="relative">
+                                        <button 
+                                          onClick={() => setOpenDropdownId(openDropdownId === user._id ? null : user._id)}
+                                          className="flex items-center px-3 py-2 text-xs bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:scale-105 border border-gray-200"
+                                        >
                                           <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                           </svg>
@@ -1741,29 +1775,35 @@ const AdminDashboard = () => {
                                           </svg>
                                         </button>
                                         
-                                        {/* Actions Dropdown Menu - Fixed z-index */}
-                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                          <div className="py-1">
-                                            <button 
-                                              onClick={() => {
-                                                setSelectedUserProfile(user);
-                                                setShowUserProfileModal(true);
-                                              }}
-                                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
-                                            >
-                                              <UserPlus className="w-4 h-4 mr-3 text-blue-600" />
-                                              View Profile
-                                            </button>
-                                            <div className="border-t border-gray-100"></div>
-                                            <button 
-                                              onClick={() => handleDeleteUser(user._id)}
-                                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                            >
-                                              <Trash2 className="w-4 h-4 mr-3" />
-                                              Delete User
-                                            </button>
+                                        {/* Actions Dropdown Menu - Click-based, now functional! */}
+                                        {openDropdownId === user._id && (
+                                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                                            <div className="py-1">
+                                              <button 
+                                                onClick={() => {
+                                                  setSelectedUserProfile(user);
+                                                  setShowUserProfileModal(true);
+                                                  setOpenDropdownId(null);
+                                                }}
+                                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
+                                              >
+                                                <UserPlus className="w-4 h-4 mr-3 text-blue-600" />
+                                                View Profile
+                                              </button>
+                                              <div className="border-t border-gray-100"></div>
+                                              <button 
+                                                onClick={() => {
+                                                  handleDeleteUser(user._id);
+                                                  setOpenDropdownId(null);
+                                                }}
+                                                className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                              >
+                                                <Trash2 className="w-4 h-4 mr-3" />
+                                                Delete User
+                                              </button>
+                                            </div>
                                           </div>
-                                        </div>
+                                        )}
                                       </div>
                                     </div>
                                   </td>
