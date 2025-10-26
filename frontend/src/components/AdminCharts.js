@@ -233,9 +233,9 @@ const AdminCharts = ({ analyticsData }) => {
   return (
     <div className="space-y-6">
       {/* Main Activity Chart */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">TANAW Activity Overview</h3>
-        <div className="h-64">
+      <div className="bg-white rounded-lg shadow-sm border p-6 relative">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 relative z-10">TANAW Activity Overview</h3>
+        <div className="h-64 relative z-10">
           <Line data={lineChartData} options={lineChartOptions} />
         </div>
       </div>
@@ -243,17 +243,17 @@ const AdminCharts = ({ analyticsData }) => {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Active Users Chart */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Users</h3>
-          <div className="h-48">
+        <div className="bg-white rounded-lg shadow-sm border p-6 relative">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 relative z-10">Active Users</h3>
+          <div className="h-48 relative z-10">
             <Bar data={barChartData} options={barChartOptions} />
           </div>
         </div>
 
         {/* Chart Types Distribution */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Chart Types Generated</h3>
-          <div className="h-48">
+        <div className="bg-white rounded-lg shadow-sm border p-6 relative">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 relative z-10">Chart Types Generated</h3>
+          <div className="h-48 relative z-10">
             <Doughnut data={doughnutData} options={doughnutOptions} />
           </div>
         </div>

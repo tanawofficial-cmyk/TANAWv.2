@@ -48,6 +48,8 @@ const AdminDashboard = () => {
   const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [overviewDateFilter, setOverviewDateFilter] = useState('');
+  const [connectivityDateFilter, setConnectivityDateFilter] = useState('');
   const [analyticsData, setAnalyticsData] = useState({
     overview: {
       totalDatasets: { value: 0, change: 0, trend: 'up' },
@@ -566,6 +568,38 @@ const AdminDashboard = () => {
 
   const renderOverview = () => (
     <div className="space-y-6">
+      {/* Date Filter for Overview */}
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <label className="text-sm font-medium text-gray-700">Filter Overview Data:</label>
+          </div>
+          <input
+            type="date"
+            value={overviewDateFilter}
+            onChange={(e) => setOverviewDateFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+          />
+          {overviewDateFilter && (
+            <button
+              onClick={() => setOverviewDateFilter('')}
+              className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Clear
+            </button>
+          )}
+          <span className="text-xs text-gray-500 ml-auto">
+            {overviewDateFilter ? `Showing data for: ${new Date(overviewDateFilter).toLocaleDateString()}` : 'Showing all time data'}
+          </span>
+        </div>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {Object.entries(analyticsData.overview).map(([key, data]) => {
@@ -601,8 +635,8 @@ const AdminDashboard = () => {
           
           return (
             <div key={key} className="group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center justify-between">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+              <div className="relative z-10 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">
                     {config.label}
@@ -653,8 +687,8 @@ const AdminDashboard = () => {
           
           return (
             <div key={key} className="group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-500/5 to-slate-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center justify-between">
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-500/5 to-slate-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+              <div className="relative z-10 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">
                     {config.label}
@@ -1298,33 +1332,65 @@ const AdminDashboard = () => {
 
         {/* Period Selector & Export */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <BarChart className="h-5 w-5 text-blue-600" />
-                Usage Analytics
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">Monitor API usage and system performance</p>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <BarChart className="h-5 w-5 text-blue-600" />
+                  Usage Analytics
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">Monitor API usage and system performance</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <select
+                  value={usagePeriod}
+                  onChange={(e) => setUsagePeriod(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="24h">Last 24 Hours</option>
+                  <option value="7d">Last 7 Days</option>
+                  <option value="30d">Last 30 Days</option>
+                  <option value="all">All Time</option>
+                </select>
+                <button
+                  onClick={exportUsageReport}
+                  disabled={!apiMetrics.timeline || apiMetrics.timeline.length === 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download className="h-4 w-4" />
+                  Export Report
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <select
-                value={usagePeriod}
-                onChange={(e) => setUsagePeriod(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="24h">Last 24 Hours</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-                <option value="all">All Time</option>
-              </select>
-              <button
-                onClick={exportUsageReport}
-                disabled={!apiMetrics.timeline || apiMetrics.timeline.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="h-4 w-4" />
-                Export Report
-              </button>
+            
+            {/* Specific Date Filter */}
+            <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <label className="text-sm font-medium text-gray-700">Filter by Specific Date:</label>
+              </div>
+              <input
+                type="date"
+                value={connectivityDateFilter}
+                onChange={(e) => setConnectivityDateFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              />
+              {connectivityDateFilter && (
+                <button
+                  onClick={() => setConnectivityDateFilter('')}
+                  className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Clear
+                </button>
+              )}
+              <span className="text-xs text-gray-500 ml-auto">
+                {connectivityDateFilter ? `Showing data for: ${new Date(connectivityDateFilter).toLocaleDateString()}` : 'Showing all time data'}
+              </span>
             </div>
           </div>
         </div>
