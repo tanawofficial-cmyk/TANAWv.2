@@ -75,6 +75,10 @@ const AdminCharts = ({ analyticsData }) => {
   const lineChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
         position: 'top',
@@ -85,6 +89,27 @@ const AdminCharts = ({ analyticsData }) => {
       },
       title: {
         display: false,
+      },
+      tooltip: {
+        enabled: true,
+        position: 'nearest',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        displayColors: true,
+        callbacks: {
+          label: function(context) {
+            let label = context.dataset.label || '';
+            if (label) {
+              label += ': ';
+            }
+            if (context.parsed.y !== null) {
+              label += context.parsed.y;
+            }
+            return label;
+          }
+        }
       },
     },
     scales: {
@@ -109,7 +134,8 @@ const AdminCharts = ({ analyticsData }) => {
     elements: {
       point: {
         radius: 4,
-        hoverRadius: 6,
+        hoverRadius: 8,
+        hitRadius: 10,
       },
     },
   };
