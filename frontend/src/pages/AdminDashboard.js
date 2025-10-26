@@ -1624,14 +1624,14 @@ const AdminDashboard = () => {
                   <div className="space-y-6">
                     {/* TANAW User Management Header */}
                     <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-6 relative overflow-hidden">
-                      {/* Background Pattern */}
-                      <div className="absolute inset-0 opacity-5">
-                        <div className="absolute inset-0" style={{
+                      {/* Background Pattern - pointer-events-none to allow clicks through */}
+                      <div className="absolute inset-0 opacity-5 pointer-events-none">
+                        <div className="absolute inset-0 pointer-events-none" style={{
                           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
                           backgroundSize: '20px 20px'
                         }}></div>
                       </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                         <div>
                           <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                             TANAW User Management
@@ -1642,7 +1642,7 @@ const AdminDashboard = () => {
                       </div>
                       
                       {/* TANAW-specific Filters */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Role Filter</label>
                           <select 
@@ -1681,7 +1681,7 @@ const AdminDashboard = () => {
                       </div>
 
                       {/* TANAW User Table */}
-                      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                      <div className="relative z-10 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                             <tr>
@@ -1815,7 +1815,7 @@ const AdminDashboard = () => {
                       </div>
 
                       {/* TANAW User Summary */}
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mt-6">
+                      <div className="relative z-10 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mt-6">
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                           <div className="text-center">
                             <div className="text-2xl font-bold text-blue-600">{users.length}</div>
