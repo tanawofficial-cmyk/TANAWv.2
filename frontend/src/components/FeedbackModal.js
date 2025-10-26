@@ -156,7 +156,7 @@ const FeedbackModal = ({ isOpen, onClose, onFeedbackSubmitted, datasetName }) =>
         <form onSubmit={handleSubmit} className="px-6 pb-6">
           {/* Overall Rating Section */}
           <div className="mb-6 pt-6">
-            <label className="block text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+            <label className="flex items-center gap-2 text-base font-semibold text-gray-800 mb-3">
               <CheckCircle className="w-5 h-5 text-green-600" />
               Overall Experience
             </label>
