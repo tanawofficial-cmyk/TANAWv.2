@@ -130,43 +130,58 @@ export const getSystemStatus = async (req, res) => {
  */
 export const getApiMetrics = async (req, res) => {
   try {
-    const { period = '7d' } = req.query;
+    const { period = '7d', date } = req.query;
     
     // Calculate date ranges
     const now = new Date();
-    let startDate;
+    let startDate, endDate;
     
-    switch (period) {
-      case '24h':
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case 'all':
-        startDate = new Date(0);
-        break;
-      default:
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // If specific date is provided, filter for that single day only
+    if (date) {
+      startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      console.log(`📅 Filtering API metrics for specific date: ${date}`);
+      console.log(`   Start: ${startDate.toISOString()}`);
+      console.log(`   End: ${endDate.toISOString()}`);
+    } else {
+      // Normal period filtering
+      switch (period) {
+        case '24h':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case 'all':
+          startDate = new Date(0);
+          break;
+        default:
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      }
+      endDate = now;
     }
 
     // Get OpenAI metrics
-    const openaiMetrics = await ApiUsage.getTotalTokens(startDate, now);
+    const openaiMetrics = await ApiUsage.getTotalTokens(startDate, endDate);
 
     // Get endpoint breakdown
-    const endpointBreakdown = await ApiUsage.getEndpointBreakdown(startDate, now);
+    const endpointBreakdown = await ApiUsage.getEndpointBreakdown(startDate, endDate);
 
     // Get daily timeline
-    const dailyTimeline = await ApiUsage.getDailyTimeline(startDate, now);
+    const dailyTimeline = await ApiUsage.getDailyTimeline(startDate, endDate);
 
     // Get success rate by service
     const serviceStats = await ApiUsage.aggregate([
       {
         $match: {
-          timestamp: { $gte: startDate, $lte: now }
+          timestamp: { $gte: startDate, $lte: endDate }
         }
       },
       {
@@ -215,31 +230,59 @@ export const getApiMetrics = async (req, res) => {
  */
 export const getDatabaseStats = async (req, res) => {
   try {
-    // Get collection stats
+    const { date } = req.query;
+    
+    // Build query based on whether we have a specific date
+    let dateQuery = {};
+    if (date) {
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      console.log(`📅 Filtering database stats for specific date: ${date}`);
+      console.log(`   Start: ${startDate.toISOString()}`);
+      console.log(`   End: ${endDate.toISOString()}`);
+      
+      dateQuery = { $gte: startDate, $lte: endDate };
+    }
+    
+    // Get collection stats (filtered by date if provided)
     const collections = {
       users: {
         name: 'Users',
-        count: await User.countDocuments(),
+        count: date 
+          ? await User.countDocuments({ createdAt: dateQuery })
+          : await User.countDocuments(),
         icon: '👥'
       },
       datasets: {
         name: 'Datasets',
-        count: await Dataset.countDocuments(),
+        count: date
+          ? await Dataset.countDocuments({ uploadDate: dateQuery })
+          : await Dataset.countDocuments(),
         icon: '📊'
       },
       feedback: {
         name: 'Feedback',
-        count: await Feedback.countDocuments(),
+        count: date
+          ? await Feedback.countDocuments({ date: dateQuery })
+          : await Feedback.countDocuments(),
         icon: '💬'
       },
       analytics: {
         name: 'Analytics',
-        count: await Analytics.countDocuments(),
+        count: date
+          ? await Analytics.countDocuments({ timestamp: dateQuery })
+          : await Analytics.countDocuments(),
         icon: '📈'
       },
       apiUsage: {
         name: 'API Usage Logs',
-        count: await ApiUsage.countDocuments(),
+        count: date
+          ? await ApiUsage.countDocuments({ timestamp: dateQuery })
+          : await ApiUsage.countDocuments(),
         icon: '🔌'
       }
     };
@@ -266,13 +309,28 @@ export const getDatabaseStats = async (req, res) => {
       console.error('Error getting database stats:', error);
     }
 
-    // Get recent activity (last 24 hours)
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Get recent activity (for specific date or last 24 hours)
+    let activityPeriod;
+    if (date) {
+      // For specific date, use the same date range
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      activityPeriod = { $gte: startDate, $lte: endDate };
+    } else {
+      // Default to last 24 hours
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      activityPeriod = { $gte: oneDayAgo };
+    }
+    
     const recentActivity = {
-      newUsers: await User.countDocuments({ createdAt: { $gte: oneDayAgo } }),
-      newDatasets: await Dataset.countDocuments({ uploadDate: { $gte: oneDayAgo } }),
-      newFeedback: await Feedback.countDocuments({ date: { $gte: oneDayAgo } }),
-      apiCalls: await ApiUsage.countDocuments({ timestamp: { $gte: oneDayAgo } })
+      newUsers: await User.countDocuments({ createdAt: activityPeriod }),
+      newDatasets: await Dataset.countDocuments({ uploadDate: activityPeriod }),
+      newFeedback: await Feedback.countDocuments({ date: activityPeriod }),
+      apiCalls: await ApiUsage.countDocuments({ timestamp: activityPeriod })
     };
 
     res.status(200).json({

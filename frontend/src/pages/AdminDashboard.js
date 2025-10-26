@@ -258,9 +258,11 @@ const AdminDashboard = () => {
   // Refetch API metrics when connectivity date filter changes
   useEffect(() => {
     if (activeTab === 'connectivity' && connectivityDateFilter) {
-      fetchApiMetrics('custom', connectivityDateFilter);
+      fetchApiMetrics('7d', connectivityDateFilter); // Pass date as second parameter
+      fetchDatabaseStats(connectivityDateFilter); // Also filter database stats
     } else if (activeTab === 'connectivity' && !connectivityDateFilter) {
       fetchApiMetrics('7d'); // Default to 7 days when no filter
+      fetchDatabaseStats(); // Fetch all time database stats
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectivityDateFilter, activeTab]);
@@ -550,11 +552,20 @@ const AdminDashboard = () => {
   };
 
   // Fetch API usage metrics
-  const fetchApiMetrics = async (period = '7d') => {
+  const fetchApiMetrics = async (period = '7d', specificDate = null) => {
     try {
-      const response = await api.get(`admin/connectivity/api-metrics?period=${period}`);
+      let url = `admin/connectivity/api-metrics?period=${period}`;
+      
+      // Add specific date parameter for historical data filtering
+      if (specificDate) {
+        url += `&date=${specificDate}`;
+        console.log(`📅 Fetching API metrics for specific date: ${specificDate}`);
+      }
+      
+      const response = await api.get(url);
       if (response && response.success) {
         setApiMetrics(response.data);
+        console.log(`📊 API metrics fetched for ${specificDate || period}:`, response.data);
       }
     } catch (error) {
       console.error('❌ Error fetching API metrics:', error);
@@ -562,11 +573,20 @@ const AdminDashboard = () => {
   };
 
   // Fetch database stats
-  const fetchDatabaseStats = async () => {
+  const fetchDatabaseStats = async (specificDate = null) => {
     try {
-      const response = await api.get('admin/connectivity/database-stats');
+      let url = 'admin/connectivity/database-stats';
+      
+      // Add specific date parameter for historical data filtering
+      if (specificDate) {
+        url += `?date=${specificDate}`;
+        console.log(`📅 Fetching database stats for specific date: ${specificDate}`);
+      }
+      
+      const response = await api.get(url);
       if (response && response.success) {
         setDatabaseStats(response.data);
+        console.log(`📊 Database stats fetched for ${specificDate || 'all time'}:`, response.data);
       }
     } catch (error) {
       console.error('❌ Error fetching database stats:', error);
