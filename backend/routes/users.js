@@ -1,6 +1,6 @@
 //backend/route/user.js
 import express from "express";
-import { getAllUsers, getMe, updateProfile, changePassword } from "../controllers/userController.js";
+import { getAllUsers, getMe, updateProfile, changePassword, verifyEmailChange } from "../controllers/userController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -16,5 +16,8 @@ router.put("/me", authMiddleware, updateProfile);
 
 // PUT /api/users/change-password -> change current user password
 router.put("/change-password", authMiddleware, changePassword);
+
+// GET /api/users/verify-email/:token -> verify email change
+router.get("/verify-email/:token", verifyEmailChange);
 
 export default router;

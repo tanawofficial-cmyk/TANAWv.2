@@ -4,6 +4,7 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 import AboutPage from "./pages/AboutPage";
@@ -29,6 +30,7 @@ function App() {
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
         {/* User Dashboard */}
         <Route path="/userDashboard" element={<Dashboard />} />

@@ -1,6 +1,8 @@
 // backend/controllers/userController.js
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { sendEmailChangeVerificationEmail, sendEmailChangeNotificationEmail } from "../services/emailService.js";
 
 // Get all users (admin use case)
 export const getAllUsers = async (req, res) => {
@@ -25,7 +27,7 @@ export const getMe = async (req, res) => {
   }
 };
 
-// Update user profile
+// Update user profile (fullName and businessName only)
 export const updateProfile = async (req, res) => {
   try {
     const { fullName, businessName, email } = req.body;
@@ -37,8 +39,9 @@ export const updateProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Check if email is being changed and if it's already taken
-    if (email && email !== user.email) {
+    // If email is being changed, handle verification flow
+    if (email && email.toLowerCase() !== user.email.toLowerCase()) {
+      // Check if new email is already in use
       const existingUser = await User.findOne({ email: email.toLowerCase() });
       if (existingUser) {
         return res.status(400).json({ 
@@ -46,10 +49,38 @@ export const updateProfile = async (req, res) => {
           message: "Email already in use by another account" 
         });
       }
-      user.email = email.toLowerCase();
+
+      // Generate verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
+      // Save pending email and token
+      user.pendingEmail = email.toLowerCase();
+      user.emailVerificationToken = verificationToken;
+      user.emailVerificationExpires = tokenExpiry;
+
+      await user.save();
+
+      // Send verification email
+      try {
+        await sendEmailChangeVerificationEmail(email, verificationToken, user.fullName || user.businessName);
+        
+        return res.json({ 
+          success: true, 
+          message: "Verification email sent! Please check your new email to confirm the change.",
+          emailVerificationRequired: true,
+          pendingEmail: email
+        });
+      } catch (emailError) {
+        console.error("❌ Error sending verification email:", emailError);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to send verification email. Please try again." 
+        });
+      }
     }
 
-    // Update fields
+    // Update other fields (fullName, businessName)
     if (fullName) user.fullName = fullName;
     if (businessName) user.businessName = businessName;
 
@@ -65,6 +96,59 @@ export const updateProfile = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Update profile error:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error", 
+      error: err.message 
+    });
+  }
+};
+
+// Verify email change
+export const verifyEmailChange = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Find user with this verification token
+    const user = await User.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid or expired verification token" 
+      });
+    }
+
+    // Store old email for notification
+    const oldEmail = user.email;
+    const newEmail = user.pendingEmail;
+
+    // Update email
+    user.email = newEmail;
+    user.pendingEmail = null;
+    user.emailVerificationToken = null;
+    user.emailVerificationExpires = null;
+
+    await user.save();
+
+    // Send notification to old email
+    try {
+      await sendEmailChangeNotificationEmail(oldEmail, user.fullName || user.businessName, newEmail);
+    } catch (emailError) {
+      console.error("⚠️ Failed to send notification to old email:", emailError);
+      // Don't fail the request if notification fails
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Email address successfully verified and updated!",
+      newEmail: newEmail
+    });
+  } catch (err) {
+    console.error("❌ Email verification error:", err);
     res.status(500).json({ 
       success: false, 
       message: "Server error", 

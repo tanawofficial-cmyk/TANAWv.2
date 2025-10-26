@@ -76,19 +76,31 @@ const UserProfileDropdown = ({ user, onUserUpdate, onLogout }) => {
       console.log("Profile update response:", response);
       
       if (response && response.success) {
-        toast.success("✅ Profile updated successfully!");
-        
-        // Update user data in parent component
-        if (onUserUpdate) {
-          onUserUpdate(response.data || response.user);
+        // Check if email verification is required
+        if (response.emailVerificationRequired) {
+          toast.success(
+            "📧 Verification email sent! Check your new email to confirm the change.",
+            { duration: 6000 }
+          );
+          setShowEditProfileModal(false);
+          setIsDropdownOpen(false);
+        } else {
+          toast.success("✅ Profile updated successfully!");
+          
+          // Update user data in parent component
+          if (onUserUpdate) {
+            onUserUpdate(response.data || response.user);
+          }
+          
+          // Update localStorage
+          const updatedUser = response.data || response.user;
+          if (updatedUser) {
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+          }
+          
+          setShowEditProfileModal(false);
+          setIsDropdownOpen(false);
         }
-        
-        // Update localStorage
-        const updatedUser = response.data || response.user;
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        
-        setShowEditProfileModal(false);
-        setIsDropdownOpen(false);
       } else {
         toast.error(response?.message || "Failed to update profile");
       }
@@ -366,6 +378,11 @@ const UserProfileDropdown = ({ user, onUserUpdate, onLogout }) => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     required
                   />
+                  {profileForm.email !== user?.email && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                      🔒 <strong>Email Verification Required:</strong> We'll send a verification link to your new email address. You must click it to complete the change.
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">

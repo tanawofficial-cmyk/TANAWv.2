@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema({
   },
   resetPasswordToken: { type: String, default: null },
   resetPasswordExpires: { type: Date, default: null },
+  // Email change verification fields
+  pendingEmail: { type: String, default: null },
+  emailVerificationToken: { type: String, default: null },
+  emailVerificationExpires: { type: Date, default: null },
 }, { timestamps: true });
 
 // ✅ Virtual field for "profile" (business name + email only)

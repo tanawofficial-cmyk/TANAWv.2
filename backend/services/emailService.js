@@ -318,6 +318,199 @@ export const sendContactNotificationEmail = async (contact) => {
   }
 };
 
+// Send email change verification email
+export const sendEmailChangeVerificationEmail = async (newEmail, verificationToken, userName) => {
+  try {
+    let transporter = createTransporter();
+
+    if (!transporter) {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransporter({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      console.log("📧 Using Ethereal test email account:", testAccount.user);
+    }
+
+    const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/verify-email/${verificationToken}`;
+
+    const mailOptions = {
+      from: `"TANAW Support" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
+      to: newEmail,
+      subject: "Verify Your New Email Address - TANAW",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; padding: 15px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+            .info { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📧 Verify Your Email Change</h1>
+            </div>
+            <div class="content">
+              <p>Hi <strong>${userName}</strong>,</p>
+              
+              <p>You requested to change your email address on TANAW. To complete this change, please verify your new email address by clicking the button below:</p>
+              
+              <div style="text-align: center;">
+                <a href="${verificationUrl}" class="button">Verify Email Address</a>
+              </div>
+              
+              <p>Or copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; color: #667eea;">${verificationUrl}</p>
+              
+              <div class="info">
+                <strong>🔒 Security Information:</strong>
+                <ul style="margin: 10px 0;">
+                  <li>This link will expire in <strong>24 hours</strong></li>
+                  <li>If you didn't request this change, please ignore this email</li>
+                  <li>Your email address will remain unchanged</li>
+                  <li>After verification, we'll notify your old email address</li>
+                </ul>
+              </div>
+              
+              <p>Need help? Contact our support team at tanawofficial@gmail.com</p>
+              
+              <p>Best regards,<br>
+              <strong>TANAW Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message from TANAW. Please do not reply to this email.</p>
+              <p>&copy; ${new Date().getFullYear()} TANAW. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Hi ${userName},
+
+        You requested to change your email address on TANAW. To complete this change, please verify your new email address by clicking this link:
+        
+        ${verificationUrl}
+        
+        This link will expire in 24 hours.
+        
+        If you didn't request this change, please ignore this email. Your email address will remain unchanged.
+        
+        Best regards,
+        TANAW Team
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    if (process.env.NODE_ENV === "development" || !process.env.EMAIL_SERVICE) {
+      console.log("📧 Preview URL:", nodemailer.getTestMessageUrl(info));
+    }
+
+    console.log("✅ Email verification sent to:", newEmail);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("❌ Error sending email verification:", error);
+    throw new Error("Failed to send email verification");
+  }
+};
+
+// Send email change notification to old email
+export const sendEmailChangeNotificationEmail = async (oldEmail, userName, newEmail) => {
+  try {
+    let transporter = createTransporter();
+
+    if (!transporter) {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransporter({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+    }
+
+    const mailOptions = {
+      from: `"TANAW Security" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
+      to: oldEmail,
+      subject: "Your Email Address Was Changed - TANAW",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🔔 Email Address Changed</h1>
+            </div>
+            <div class="content">
+              <p>Hi <strong>${userName}</strong>,</p>
+              
+              <p>This is a security notification to inform you that your email address for your TANAW account has been successfully changed.</p>
+              
+              <div class="warning">
+                <strong>📧 New Email Address:</strong><br>
+                ${newEmail}
+              </div>
+              
+              <p><strong>⚠️ Important:</strong> Future account notifications will be sent to your new email address.</p>
+              
+              <p>If you did not make this change, your account may have been compromised. Please contact our support team immediately at tanawofficial@gmail.com</p>
+              
+              <p>Best regards,<br>
+              <strong>TANAW Security Team</strong></p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Hi ${userName},
+
+        This is a security notification to inform you that your email address for your TANAW account has been successfully changed.
+
+        New Email Address: ${newEmail}
+
+        Important: Future account notifications will be sent to your new email address.
+
+        If you did not make this change, your account may have been compromised. Please contact our support team immediately at tanawofficial@gmail.com
+
+        Best regards,
+        TANAW Security Team
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Email change notification sent to old email:", oldEmail);
+  } catch (error) {
+    console.error("❌ Error sending email change notification:", error);
+    // Don't throw error here - email was already changed
+  }
+};
+
 // Send contact confirmation to user
 export const sendContactConfirmationEmail = async (email, name) => {
   try {
