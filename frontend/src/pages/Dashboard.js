@@ -462,20 +462,18 @@ const UserDashboard = () => {
           });
           matchesDate = true; // If invalid date, don't filter out
         } else {
-          // Compare only the date part (ignore time)
-          const filterDateOnly = new Date(filterDate);
-          const datasetDateOnly = new Date(datasetDate);
+          // Get date strings in YYYY-MM-DD format for exact comparison
+          const filterDateStr = filterDate.toISOString().split('T')[0];
+          const datasetDateStr = datasetDate.toISOString().split('T')[0];
           
-          filterDateOnly.setHours(0, 0, 0, 0);
-          datasetDateOnly.setHours(0, 0, 0, 0);
-          
-          // Show datasets uploaded on or after the filter date
-          matchesDate = datasetDateOnly >= filterDateOnly;
+          // EXACT DATE MATCH - show only datasets from this specific date
+          matchesDate = filterDateStr === datasetDateStr;
           
           console.log("📅 Date comparison:", {
-            filterDateOnly: filterDateOnly.toISOString(),
-            datasetDateOnly: datasetDateOnly.toISOString(),
-            matchesDate
+            filterDateStr,
+            datasetDateStr,
+            matchesDate,
+            logic: "EXACT MATCH (same day only)"
           });
         }
       } catch (error) {
@@ -2327,7 +2325,7 @@ const UserDashboard = () => {
                 )}
                 {dateFilter && (
                   <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    📅 From {new Date(dateFilter).toLocaleDateString()}
+                    📅 On {new Date(dateFilter).toLocaleDateString()}
                     <button
                       onClick={() => setDateFilter("")}
                       className="ml-1 text-blue-600 hover:text-blue-800"

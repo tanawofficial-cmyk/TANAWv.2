@@ -166,13 +166,14 @@ const StickyHeader = ({ user, onUserUpdate, onLogout, onSearch, onDateFilter }) 
                       
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">From Date</label>
+                          <label className="block text-xs text-gray-600 mb-1">Select Specific Date</label>
                           <input
                             type="date"
                             value={dateFilter}
                             onChange={(e) => handleDateFilterChange(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                           />
+                          <p className="text-[10px] text-gray-500 mt-1">Shows datasets uploaded on this date only</p>
                         </div>
                         
                         <div className="flex justify-between items-center">
