@@ -1521,9 +1521,6 @@ const UserDashboard = () => {
   const handleCloseAnalytics = () => {
     console.log("🔄 Closing analytics dashboard");
     
-    // Store dataset name for feedback
-    const currentDatasetName = selectedDatasetData?.name || datasets.find(d => d.id === selectedDatasetId)?.name;
-    
     setSelectedDatasetId(null);
     setSelectedDatasetData(null);
     setCharts([]);
@@ -1531,8 +1528,11 @@ const UserDashboard = () => {
     setProgressStep("upload");
     
     // Show feedback modal after viewing analytics
-    // Random chance (30%) to avoid overwhelming users
-    if (Math.random() < 0.3) {
+    // In development: always show for testing
+    // In production: 30% chance to avoid overwhelming users
+    const shouldShowFeedback = process.env.NODE_ENV === 'development' ? true : Math.random() < 0.3;
+    
+    if (shouldShowFeedback) {
       setTimeout(() => {
         console.log('🎯 Triggering feedback modal after viewing analytics');
         setShowFeedbackModal(true);
@@ -2314,6 +2314,23 @@ const UserDashboard = () => {
            setDateFilter(dateQuery);
          }}
        />
+
+       {/* 🧪 LOCAL TESTING ONLY - Floating Feedback Test Button */}
+       {process.env.NODE_ENV === 'development' && (
+         <button
+           onClick={() => {
+             console.log('🧪 TEST: Opening feedback modal');
+             setShowFeedbackModal(true);
+           }}
+           className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/50 hover:scale-110 transition-all z-50 flex items-center gap-2"
+           title="Test Feedback Modal (Dev Only)"
+         >
+           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+           </svg>
+           <span className="font-medium text-sm">Test Feedback</span>
+         </button>
+       )}
 
        {/* Main Content - Responsive Container */}
        <div className="flex flex-col px-3 sm:px-6 md:px-8 lg:px-12 py-4 sm:py-6 md:py-8 overflow-y-auto max-w-7xl mx-auto w-full">
