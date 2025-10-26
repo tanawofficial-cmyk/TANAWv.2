@@ -4,6 +4,7 @@ import User from "../models/User.js";
 import Upload from "../models/Upload.js";
 import Feedback from "../models/Feedback.js";
 import Dataset from "../models/Dataset.js";
+import { sendAccountDeletionEmail } from "../services/emailService.js";
 
 /**
  * @desc    Get aggregated admin statistics for dashboard
@@ -96,15 +97,31 @@ export const getAllUsers = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const deletedUser = await User.findByIdAndDelete(id);
+    const user = await User.findById(id);
 
-    if (!deletedUser) {
+    if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Store user info before deletion for email
+    const userEmail = user.email;
+    const userName = user.fullName || user.businessName;
+
+    // Delete the user
+    await User.findByIdAndDelete(id);
+
+    // Send notification email to deleted user
+    try {
+      await sendAccountDeletionEmail(userEmail, userName);
+      console.log(`✅ Account deletion notification sent to: ${userEmail}`);
+    } catch (emailError) {
+      console.error("⚠️ Failed to send deletion notification email:", emailError);
+      // Don't fail the request if email fails
     }
 
     res.status(200).json({
       success: true,
-      message: "User deleted successfully",
+      message: "User deleted successfully and notification sent",
     });
   } catch (error) {
     console.error("❌ Error deleting user:", error);

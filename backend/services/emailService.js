@@ -511,6 +511,109 @@ export const sendEmailChangeNotificationEmail = async (oldEmail, userName, newEm
   }
 };
 
+// Send account deletion notification
+export const sendAccountDeletionEmail = async (email, userName) => {
+  try {
+    let transporter = createTransporter();
+
+    if (!transporter) {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransporter({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+    }
+
+    const mailOptions = {
+      from: `"TANAW Support" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
+      to: email,
+      subject: "Your TANAW Account Has Been Deleted",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .warning { background: #fee2e2; border-left: 4px solid #dc2626; padding: 12px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🚫 Account Deleted</h1>
+            </div>
+            <div class="content">
+              <p>Hi <strong>${userName}</strong>,</p>
+              
+              <p>We're writing to inform you that your TANAW account has been deleted by an administrator.</p>
+              
+              <div class="warning">
+                <strong>⚠️ Important Information:</strong>
+                <ul style="margin: 10px 0;">
+                  <li>Your account and all associated data have been removed</li>
+                  <li>You will no longer be able to access TANAW services</li>
+                  <li>All uploaded datasets have been deleted</li>
+                  <li>This action cannot be undone</li>
+                </ul>
+              </div>
+              
+              <p><strong>Why was my account deleted?</strong></p>
+              <ul>
+                <li>Violation of Terms of Service</li>
+                <li>Account inactive for extended period</li>
+                <li>User request</li>
+                <li>Administrative decision</li>
+              </ul>
+              
+              <p>If you believe this was done in error or have questions, please contact our support team at <strong>tanawofficial@gmail.com</strong></p>
+              
+              <p>We appreciate your time using TANAW.</p>
+              
+              <p>Best regards,<br>
+              <strong>TANAW Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>&copy; ${new Date().getFullYear()} TANAW. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Hi ${userName},
+
+        We're writing to inform you that your TANAW account has been deleted by an administrator.
+
+        Important Information:
+        - Your account and all associated data have been removed
+        - You will no longer be able to access TANAW services
+        - All uploaded datasets have been deleted
+        - This action cannot be undone
+
+        If you believe this was done in error or have questions, please contact our support team at tanawofficial@gmail.com
+
+        Best regards,
+        TANAW Team
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Account deletion email sent to:", email);
+  } catch (error) {
+    console.error("❌ Error sending account deletion email:", error);
+    // Don't throw error - account was already deleted
+  }
+};
+
 // Send contact confirmation to user
 export const sendContactConfirmationEmail = async (email, name) => {
   try {

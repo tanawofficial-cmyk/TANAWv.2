@@ -44,6 +44,7 @@ const AdminDashboard = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [roleFilter, setRoleFilter] = useState('');
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userDateFilter, setUserDateFilter] = useState('');
   const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
   const [analyticsData, setAnalyticsData] = useState({
@@ -165,8 +166,25 @@ const AdminDashboard = () => {
       );
     }
 
+    // Filter by registration date
+    if (userDateFilter) {
+      const now = new Date();
+      if (userDateFilter === 'today') {
+        filtered = filtered.filter(user => {
+          const userDate = new Date(user.createdAt);
+          return userDate.toDateString() === now.toDateString();
+        });
+      } else if (userDateFilter === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(user => new Date(user.createdAt) >= weekAgo);
+      } else if (userDateFilter === 'month') {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(user => new Date(user.createdAt) >= monthAgo);
+      }
+    }
+
     setFilteredUsers(filtered);
-  }, [users, roleFilter, userSearchQuery]);
+  }, [users, roleFilter, userSearchQuery, userDateFilter]);
 
   // Fetch feedback when tab changes to userFeedback
   useEffect(() => {
@@ -306,21 +324,32 @@ const AdminDashboard = () => {
 
 
   const handleDeleteUser = async (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    const userToDelete = users.find(u => u._id === userId);
+    const userName = userToDelete?.fullName || userToDelete?.businessName || 'this user';
+    
+    if (window.confirm(`Are you sure you want to delete ${userName}? This action cannot be undone and the user will be notified via email.`)) {
       try {
         const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
         const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
           }
         });
         
-        if (response.ok) {
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          toast.success(`✅ User deleted successfully! Notification email sent to ${userToDelete?.email}`);
           setUsers(users.filter(user => user._id !== userId));
+          setFilteredUsers(filteredUsers.filter(user => user._id !== userId));
+        } else {
+          toast.error(data.message || 'Failed to delete user');
         }
       } catch (error) {
-        console.error('Error deleting user:', error);
+        console.error('❌ Error deleting user:', error);
+        toast.error('Failed to delete user. Please try again.');
       }
     }
   };
@@ -1597,7 +1626,11 @@ const AdminDashboard = () => {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Registration Date</label>
-                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                          <select 
+                            value={userDateFilter}
+                            onChange={(e) => setUserDateFilter(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
                             <option value="">All Time</option>
                             <option value="today">Today</option>
                             <option value="week">This Week</option>
