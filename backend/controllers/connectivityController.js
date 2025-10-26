@@ -24,7 +24,7 @@ export const getSystemStatus = async (req, res) => {
       flaskService: {
         status: 'offline',
         responseTime: 0,
-        url: process.env.REACT_APP_ANALYTICS_API_URL || 'http://localhost:5002',
+        url: process.env.FLASK_ANALYTICS_URL || 'http://localhost:5002',
         lastCheck: new Date()
       },
       openaiApi: {
@@ -53,7 +53,7 @@ export const getSystemStatus = async (req, res) => {
     // Check Flask Analytics Service
     const flaskStartTime = Date.now();
     try {
-      const flaskUrl = process.env.REACT_APP_ANALYTICS_API_URL || 'http://localhost:5002';
+      const flaskUrl = process.env.FLASK_ANALYTICS_URL || 'http://localhost:5002';
       let flaskResponse;
       let healthCheckPassed = false;
       
