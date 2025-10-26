@@ -156,33 +156,47 @@ export const getAnalyticsData = async (req, res) => {
     // Calculate average charts per dataset
     const avgChartsPerDataset = totalDatasets > 0 ? Math.round(chartsGenerated / totalDatasets) : 0;
 
-    // Get daily breakdown for charts
-    // If specific date, show only that day; otherwise show last 7 days
+    // Get breakdown for charts
+    // If specific date, show HOURLY breakdown; otherwise show last 7 DAYS
     const dailyDatasets = [];
     const dailyCharts = [];
     const dailyActiveUsers = [];
+    const timeLabels = [];
     
     if (date) {
-      // For specific date, just return that day's data
-      const datasetsCount = await Analytics.countDocuments({
-        type: 'file_upload',
-        timestamp: { $gte: startDate, $lte: endDate }
-      });
+      // For specific date, return HOURLY breakdown (24 hours: 00:00 to 23:00)
+      console.log(`📊 Generating hourly breakdown for ${date}`);
       
-      const chartsCount = await Analytics.countDocuments({
-        type: 'chart_generation',
-        timestamp: { $gte: startDate, $lte: endDate }
-      });
-      
-      const activeUsersCount = await Analytics.distinct('userId', {
-        timestamp: { $gte: startDate, $lte: endDate }
-      });
-      
-      dailyDatasets.push(datasetsCount);
-      dailyCharts.push(chartsCount);
-      dailyActiveUsers.push(activeUsersCount.length);
+      for (let hour = 0; hour < 24; hour++) {
+        const hourStart = new Date(startDate);
+        hourStart.setHours(hour, 0, 0, 0);
+        
+        const hourEnd = new Date(startDate);
+        hourEnd.setHours(hour, 59, 59, 999);
+        
+        const datasetsCount = await Analytics.countDocuments({
+          type: 'file_upload',
+          timestamp: { $gte: hourStart, $lte: hourEnd }
+        });
+        
+        const chartsCount = await Analytics.countDocuments({
+          type: 'chart_generation',
+          timestamp: { $gte: hourStart, $lte: hourEnd }
+        });
+        
+        const activeUsersCount = await Analytics.distinct('userId', {
+          timestamp: { $gte: hourStart, $lte: hourEnd }
+        });
+        
+        dailyDatasets.push(datasetsCount);
+        dailyCharts.push(chartsCount);
+        dailyActiveUsers.push(activeUsersCount.length);
+        
+        // Format hour label (e.g., "00:00", "01:00", "14:00")
+        timeLabels.push(`${String(hour).padStart(2, '0')}:00`);
+      }
     } else {
-      // Normal 7-day breakdown
+      // Normal 7-day DAILY breakdown
       for (let i = 6; i >= 0; i--) {
         const dayStart = new Date(now);
         dayStart.setDate(dayStart.getDate() - i);
@@ -208,6 +222,10 @@ export const getAnalyticsData = async (req, res) => {
         dailyDatasets.push(datasetsCount);
         dailyCharts.push(chartsCount);
         dailyActiveUsers.push(activeUsersCount.length);
+        
+        // Format date label (e.g., "Oct 21", "Oct 22")
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        timeLabels.push(`${monthNames[dayStart.getMonth()]} ${dayStart.getDate()}`);
       }
     }
 
@@ -248,7 +266,9 @@ export const getAnalyticsData = async (req, res) => {
       timeSeries: {
         dailyDatasets: dailyDatasets,
         dailyCharts: dailyCharts,
-        dailyActiveUsers: dailyActiveUsers
+        dailyActiveUsers: dailyActiveUsers,
+        labels: timeLabels, // NEW: Dynamic labels (hourly for specific date, daily for range)
+        isHourlyView: !!date // NEW: Flag to indicate if it's hourly or daily view
       }
     };
 

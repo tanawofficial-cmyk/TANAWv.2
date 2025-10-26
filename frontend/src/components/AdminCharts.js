@@ -26,23 +26,27 @@ ChartJS.register(
 );
 
 const AdminCharts = ({ analyticsData }) => {
-  // Use real TANAW data with actual dates from backend
+  // Use real TANAW data with dynamic labels from backend (hourly or daily)
   const generateTimeSeriesData = () => {
-    // Generate last 7 days with actual dates
-    const labels = [];
     const datasets = analyticsData?.timeSeries?.dailyDatasets || [];
     const charts = analyticsData?.timeSeries?.dailyCharts || [];
     
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      labels.push(dateStr);
+    // Use labels from backend if available (supports both hourly and daily views)
+    let labels = analyticsData?.timeSeries?.labels || [];
+    
+    // If no labels from backend, generate default 7-day labels
+    if (labels.length === 0) {
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        labels.push(dateStr);
+      }
     }
     
-    // If no backend data, fill with zeros
-    const datasetsData = datasets.length > 0 ? datasets : [0, 0, 0, 0, 0, 0, 0];
-    const chartsData = charts.length > 0 ? charts : [0, 0, 0, 0, 0, 0, 0];
+    // If no backend data, fill with zeros matching label count
+    const datasetsData = datasets.length > 0 ? datasets : Array(labels.length).fill(0);
+    const chartsData = charts.length > 0 ? charts : Array(labels.length).fill(0);
     
     return { labels, datasets: datasetsData, charts: chartsData };
   };
@@ -140,21 +144,25 @@ const AdminCharts = ({ analyticsData }) => {
     },
   };
 
-  // Bar chart data for user activity (using real TANAW data with actual dates from backend)
+  // Bar chart data for user activity (using real TANAW data with dynamic labels from backend)
   const generateActiveUsersData = () => {
-    const labels = [];
     const data = analyticsData?.timeSeries?.dailyActiveUsers || [];
     
-    // Generate last 7 days with actual dates
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      labels.push(dateStr);
+    // Use labels from backend if available (supports both hourly and daily views)
+    let labels = analyticsData?.timeSeries?.labels || [];
+    
+    // If no labels from backend, generate default 7-day labels
+    if (labels.length === 0) {
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        labels.push(dateStr);
+      }
     }
     
-    // If no backend data, fill with zeros
-    const activeUsersData = data.length > 0 ? data : [0, 0, 0, 0, 0, 0, 0];
+    // If no backend data, fill with zeros matching label count
+    const activeUsersData = data.length > 0 ? data : Array(labels.length).fill(0);
     
     return { labels, data: activeUsersData };
   };
