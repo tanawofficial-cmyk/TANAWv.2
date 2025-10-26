@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../models/User.js"; // 👈 make sure this import is here
-import { sendPasswordResetEmail, sendPasswordResetConfirmationEmail } from "../services/emailService.js";
+import { sendPasswordResetEmail, sendPasswordResetConfirmationEmail, sendWelcomeEmail } from "../services/emailService.js";
 
 // REGISTER
 export const registerUser = async (req, res) => {
@@ -32,6 +32,15 @@ export const registerUser = async (req, res) => {
     });
 
     await user.save();
+
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(user.email, user.fullName, user.businessName);
+      console.log(`✅ Welcome email sent to: ${user.email}`);
+    } catch (emailError) {
+      console.error("⚠️ Failed to send welcome email:", emailError);
+      // Don't fail registration if email fails
+    }
 
     return res.status(201).json({
       success: true,

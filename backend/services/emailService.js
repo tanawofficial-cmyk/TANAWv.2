@@ -614,6 +614,165 @@ export const sendAccountDeletionEmail = async (email, userName) => {
   }
 };
 
+// Send welcome email on registration
+export const sendWelcomeEmail = async (email, userName, businessName) => {
+  try {
+    let transporter = createTransporter();
+
+    if (!transporter) {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransporter({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      console.log("📧 Using Ethereal test email account:", testAccount.user);
+    }
+
+    const mailOptions = {
+      from: `"TANAW Team" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
+      to: email,
+      subject: "Welcome to TANAW - Your Analytics Journey Begins! 🎉",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; padding: 15px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+            .feature-box { background: white; border-left: 4px solid #667eea; padding: 15px; margin: 15px 0; border-radius: 5px; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+            .emoji { font-size: 48px; margin: 10px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="emoji">🎉</div>
+              <h1 style="margin: 10px 0; font-size: 32px;">Welcome to TANAW!</h1>
+              <p style="font-size: 18px; margin: 10px 0; opacity: 0.95;">Transform Your Data into Insights</p>
+            </div>
+            <div class="content">
+              <p>Hi <strong>${userName}</strong>,</p>
+              
+              <p style="font-size: 18px; color: #667eea; font-weight: bold;">🎊 Congratulations! Your TANAW account is ready!</p>
+              
+              <p>We're thrilled to have <strong>${businessName}</strong> join our community of data-driven businesses. You now have access to powerful analytics tools that will transform how you understand your data.</p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" class="button">Get Started Now →</a>
+              </div>
+              
+              <h3 style="color: #667eea; margin-top: 30px;">✨ What You Can Do With TANAW:</h3>
+              
+              <div class="feature-box">
+                <strong>📊 Upload & Analyze Data</strong>
+                <p style="margin: 5px 0; color: #666;">Upload CSV/Excel files and get instant insights with AI-powered analytics</p>
+              </div>
+              
+              <div class="feature-box">
+                <strong>📈 Generate Smart Charts</strong>
+                <p style="margin: 5px 0; color: #666;">Auto-generate beautiful, interactive visualizations tailored to your data</p>
+              </div>
+              
+              <div class="feature-box">
+                <strong>🤖 AI-Powered Forecasting</strong>
+                <p style="margin: 5px 0; color: #666;">Predict future trends with advanced machine learning models</p>
+              </div>
+              
+              <div class="feature-box">
+                <strong>💡 Actionable Insights</strong>
+                <p style="margin: 5px 0; color: #666;">Get narrative explanations and recommendations from our AI</p>
+              </div>
+              
+              <h3 style="color: #667eea; margin-top: 30px;">🚀 Quick Start Guide:</h3>
+              <ol style="color: #666;">
+                <li><strong>Login</strong> to your dashboard</li>
+                <li><strong>Upload</strong> your first dataset (CSV or Excel)</li>
+                <li><strong>View</strong> auto-generated charts and insights</li>
+                <li><strong>Explore</strong> forecasts and analytics</li>
+                <li><strong>Download</strong> reports for sharing</li>
+              </ol>
+              
+              <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                <strong>💼 Your Account Details:</strong><br>
+                <strong>Business:</strong> ${businessName}<br>
+                <strong>Email:</strong> ${email}<br>
+                <strong>Account Type:</strong> Standard User
+              </div>
+              
+              <p style="margin-top: 30px;">Need help getting started? Check out our <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/docs" style="color: #667eea;">documentation</a> or reply to this email with any questions.</p>
+              
+              <p style="margin-top: 30px;">We're here to help you succeed! 🌟</p>
+              
+              <p>Best regards,<br>
+              <strong>The TANAW Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated welcome message from TANAW.</p>
+              <p>&copy; ${new Date().getFullYear()} TANAW. All rights reserved.</p>
+              <p style="margin-top: 10px;">
+                <a href="tanawofficial@gmail.com" style="color: #667eea; text-decoration: none;">Contact Support</a> | 
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/docs" style="color: #667eea; text-decoration: none;">Documentation</a>
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Welcome to TANAW, ${userName}!
+
+        Congratulations! Your TANAW account for ${businessName} is ready!
+
+        What You Can Do With TANAW:
+        - Upload & Analyze Data: Upload CSV/Excel files and get instant insights
+        - Generate Smart Charts: Auto-generate beautiful visualizations
+        - AI-Powered Forecasting: Predict future trends with ML models
+        - Actionable Insights: Get narrative explanations from our AI
+
+        Quick Start Guide:
+        1. Login to your dashboard
+        2. Upload your first dataset (CSV or Excel)
+        3. View auto-generated charts and insights
+        4. Explore forecasts and analytics
+        5. Download reports for sharing
+
+        Your Account Details:
+        Business: ${businessName}
+        Email: ${email}
+        Account Type: Standard User
+
+        Get started now: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+
+        Need help? Reply to this email or visit our documentation.
+
+        Best regards,
+        The TANAW Team
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    if (process.env.NODE_ENV === "development" || !process.env.EMAIL_SERVICE) {
+      console.log("📧 Preview URL:", nodemailer.getTestMessageUrl(info));
+    }
+
+    console.log("✅ Welcome email sent to:", email);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("❌ Error sending welcome email:", error);
+    // Don't throw error - user was already registered
+  }
+};
+
 // Send contact confirmation to user
 export const sendContactConfirmationEmail = async (email, name) => {
   try {
