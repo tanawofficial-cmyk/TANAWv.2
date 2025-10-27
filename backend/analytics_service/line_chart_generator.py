@@ -19,6 +19,12 @@ class TANAWLineChartGenerator:
     def __init__(self):
         """Initialize line chart generator with domain-agnostic configs"""
         
+        # Initialize styling and fallback handler
+        from chart_styling import TANAWChartStyling
+        from fallback_handler import TANAWFallbackHandler
+        self.styling = TANAWChartStyling()
+        self.fallback_handler = TANAWFallbackHandler()
+        
         self.chart_configs = {
             "time_series_summary": {
                 "title": "Time Series Summary",

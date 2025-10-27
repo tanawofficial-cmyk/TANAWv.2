@@ -29,6 +29,12 @@ class TANAWSalesForecastGenerator:
         self.forecast_periods = 30  # Forecast 30 days ahead
         self.confidence_level = 0.95  # 95% confidence interval
         
+        # Initialize styling and fallback handler
+        from chart_styling import TANAWChartStyling
+        from fallback_handler import TANAWFallbackHandler
+        self.styling = TANAWChartStyling()
+        self.fallback_handler = TANAWFallbackHandler()
+        
         # Prophet configuration for better forecasting
         self.prophet_config = {
             'yearly_seasonality': True,
@@ -428,9 +434,9 @@ class TANAWSalesForecastGenerator:
                     "r_squared": float(r_squared),
                     "forecast_periods": int(self.forecast_periods),
                     "confidence_level": float(self.confidence_level),
-                    "total_historical_sales": float(sum([item["y"] for item in historical_data])),
+                    "total_historical_sales": float(sum([item['y'] for item in historical_data])),
                     "predicted_total_forecast": float(sum(forecast_y)),
-                    "growth_rate": f"{(float(slope) / float(np.mean([item["y"] for item in historical_data])) * 100):.2f}%" if float(np.mean([item["y"] for item in historical_data])) > 0 else "0%",
+                    "growth_rate": f"{(float(slope) / float(np.mean([item['y'] for item in historical_data])) * 100):.2f}%" if float(np.mean([item['y'] for item in historical_data])) > 0 else "0%",
                     "model_accuracy": "Medium (Linear Regression)"
                 }
             }

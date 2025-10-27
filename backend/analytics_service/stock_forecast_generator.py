@@ -381,9 +381,9 @@ class TANAWStockForecastGenerator:
                     "r_squared": float(r_squared),
                     "forecast_periods": int(self.forecast_periods),
                     "confidence_level": float(self.confidence_level),
-                    "avg_historical_stock": float(np.mean([item["y"] for item in historical_data])),
+                    "avg_historical_stock": float(np.mean([item['y'] for item in historical_data])),
                     "predicted_avg_forecast": float(np.mean(forecast_y)),
-                    "growth_rate": f"{(float(slope) / float(np.mean([item["y"] for item in historical_data])) * 100):.2f}%" if float(np.mean([item["y"] for item in historical_data])) > 0 else "0%",
+                    "growth_rate": f"{(float(slope) / float(np.mean([item['y'] for item in historical_data])) * 100):.2f}%" if float(np.mean([item['y'] for item in historical_data])) > 0 else "0%",
                     "model_accuracy": "Medium (Linear Regression)",
                     "reorder_analysis": reorder_analysis
                 }
