@@ -78,16 +78,21 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
-    // ✅ Check license key if logging in as admin
+    // ✅ Determine the actual role for this session
+    let sessionRole = user.role;
+    
+    // Check license key if logging in as admin
     if (loginType === "admin") {
       if (licenseKey !== process.env.ADMIN_LICENSE_KEY) {
         return res.status(403).json({ success: false, message: "Invalid admin license key" });
       }
+      // Valid admin login - use admin role for this session
+      sessionRole = "admin";
     }
 
-    // ✅ Sign JWT
+    // ✅ Sign JWT with the session role (not database role)
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: user._id, role: sessionRole },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -99,7 +104,7 @@ export const loginUser = async (req, res) => {
         token,
         id: user._id,
         email: user.email,
-        role: loginType === "admin" ? "admin" : "user",
+        role: sessionRole,
         fullName: user.fullName,
         businessName: user.businessName
       }

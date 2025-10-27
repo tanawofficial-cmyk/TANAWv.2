@@ -1,12 +1,19 @@
 // backend/services/emailService.js
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
+
+// Initialize Resend if API key is provided
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Create reusable transporter
 const createTransporter = () => {
   // For development, you can use a service like Gmail or Mailtrap
-  // For production, use a proper email service like SendGrid, AWS SES, etc.
+  // For production, use a proper email service like Resend, SendGrid, AWS SES, etc.
   
-  if (process.env.EMAIL_SERVICE === "gmail") {
+  if (process.env.EMAIL_SERVICE === "resend") {
+    // Using Resend API (recommended for production)
+    return null; // We'll use resend directly, not nodemailer
+  } else if (process.env.EMAIL_SERVICE === "gmail") {
     // Gmail configuration
     return nodemailer.createTransport({
       service: "gmail",
@@ -19,11 +26,19 @@ const createTransporter = () => {
     // Generic SMTP configuration
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT || 587,
+      port: parseInt(process.env.SMTP_PORT) || 587,
       secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD,
+      },
+      connectionTimeout: 30000, // 30 seconds
+      greetingTimeout: 30000,
+      socketTimeout: 60000,
+      debug: true, // Enable debug logs
+      logger: true, // Enable logger
+      tls: {
+        rejectUnauthorized: false, // For development/Railway compatibility
       },
     });
   } else {
@@ -35,26 +50,72 @@ const createTransporter = () => {
   }
 };
 
+// Helper function to send email via Resend
+const sendViaResend = async (mailOptions) => {
+  if (!resend) {
+    throw new Error("Resend API key not configured");
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      html: mailOptions.html,
+      text: mailOptions.text,
+      reply_to: mailOptions.replyTo,
+    });
+
+    if (error) {
+      console.error("❌ Resend API error:", error);
+      throw error;
+    }
+
+    console.log("✅ Email sent via Resend:", data.id);
+    return { success: true, messageId: data.id };
+  } catch (error) {
+    console.error("❌ Error sending via Resend:", error);
+    throw error;
+  }
+};
+
+// Universal email sender that supports both Resend and Nodemailer
+const sendEmail = async (mailOptions) => {
+  // Use Resend if configured
+  if (process.env.EMAIL_SERVICE === "resend") {
+    return await sendViaResend(mailOptions);
+  }
+
+  // Otherwise use Nodemailer
+  let transporter = createTransporter();
+
+  // If no transporter (dev mode), create ethereal test account
+  if (!transporter) {
+    const testAccount = await nodemailer.createTestAccount();
+    transporter = nodemailer.createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+    console.log("📧 Using Ethereal test email account:", testAccount.user);
+  }
+
+  const info = await transporter.sendMail(mailOptions);
+
+  if (process.env.NODE_ENV === "development" || !process.env.EMAIL_SERVICE) {
+    console.log("📧 Preview URL:", nodemailer.getTestMessageUrl(info));
+  }
+
+  return { success: true, messageId: info.messageId };
+};
+
 // Send password reset email
 export const sendPasswordResetEmail = async (email, resetToken, businessName) => {
   try {
-    let transporter = createTransporter();
-
-    // If no transporter (dev mode), create ethereal test account
-    if (!transporter) {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransport({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-      console.log("📧 Using Ethereal test email account:", testAccount.user);
-    }
-
     const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password/${resetToken}`;
 
     const mailOptions = {
@@ -130,14 +191,9 @@ export const sendPasswordResetEmail = async (email, resetToken, businessName) =>
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-
-    if (process.env.NODE_ENV === "development" || !process.env.EMAIL_SERVICE) {
-      console.log("📧 Preview URL:", nodemailer.getTestMessageUrl(info));
-    }
-
+    const result = await sendEmail(mailOptions);
     console.log("✅ Password reset email sent to:", email);
-    return { success: true, messageId: info.messageId };
+    return result;
   } catch (error) {
     console.error("❌ Error sending password reset email:", error);
     throw new Error("Failed to send password reset email");
@@ -147,21 +203,6 @@ export const sendPasswordResetEmail = async (email, resetToken, businessName) =>
 // Send password reset confirmation email
 export const sendPasswordResetConfirmationEmail = async (email, businessName) => {
   try {
-    let transporter = createTransporter();
-
-    if (!transporter) {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransport({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-    }
-
     const mailOptions = {
       from: `"TANAW Support" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
       to: email,
@@ -215,7 +256,7 @@ export const sendPasswordResetConfirmationEmail = async (email, businessName) =>
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sendEmail(mailOptions);
     console.log("✅ Password reset confirmation email sent to:", email);
   } catch (error) {
     console.error("❌ Error sending confirmation email:", error);
@@ -226,22 +267,6 @@ export const sendPasswordResetConfirmationEmail = async (email, businessName) =>
 // Send contact form notification to admin
 export const sendContactNotificationEmail = async (contact) => {
   try {
-    let transporter = createTransporter();
-
-    if (!transporter) {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransporter({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-      console.log("📧 Using Ethereal test email account:", testAccount.user);
-    }
-
     const adminEmail = process.env.ADMIN_EMAIL || "tanawofficial@gmail.com";
 
     const mailOptions = {
@@ -304,14 +329,9 @@ export const sendContactNotificationEmail = async (contact) => {
       replyTo: contact.email
     };
 
-    const info = await transporter.sendMail(mailOptions);
-
-    if (process.env.NODE_ENV === "development" || !process.env.EMAIL_SERVICE) {
-      console.log("📧 Preview URL:", nodemailer.getTestMessageUrl(info));
-    }
-
+    const result = await sendEmail(mailOptions);
     console.log("✅ Contact notification email sent to admin");
-    return { success: true, messageId: info.messageId };
+    return result;
   } catch (error) {
     console.error("❌ Error sending contact notification email:", error);
     throw new Error("Failed to send contact notification email");
@@ -321,22 +341,6 @@ export const sendContactNotificationEmail = async (contact) => {
 // Send email change verification email
 export const sendEmailChangeVerificationEmail = async (newEmail, verificationToken, userName) => {
   try {
-    let transporter = createTransporter();
-
-    if (!transporter) {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransporter({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-      console.log("📧 Using Ethereal test email account:", testAccount.user);
-    }
-
     const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/verify-email/${verificationToken}`;
 
     const mailOptions = {
@@ -413,14 +417,9 @@ export const sendEmailChangeVerificationEmail = async (newEmail, verificationTok
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-
-    if (process.env.NODE_ENV === "development" || !process.env.EMAIL_SERVICE) {
-      console.log("📧 Preview URL:", nodemailer.getTestMessageUrl(info));
-    }
-
+    const result = await sendEmail(mailOptions);
     console.log("✅ Email verification sent to:", newEmail);
-    return { success: true, messageId: info.messageId };
+    return result;
   } catch (error) {
     console.error("❌ Error sending email verification:", error);
     throw new Error("Failed to send email verification");
@@ -430,21 +429,6 @@ export const sendEmailChangeVerificationEmail = async (newEmail, verificationTok
 // Send email change notification to old email
 export const sendEmailChangeNotificationEmail = async (oldEmail, userName, newEmail) => {
   try {
-    let transporter = createTransporter();
-
-    if (!transporter) {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransporter({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-    }
-
     const mailOptions = {
       from: `"TANAW Security" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
       to: oldEmail,
@@ -503,7 +487,7 @@ export const sendEmailChangeNotificationEmail = async (oldEmail, userName, newEm
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sendEmail(mailOptions);
     console.log("✅ Email change notification sent to old email:", oldEmail);
   } catch (error) {
     console.error("❌ Error sending email change notification:", error);
@@ -514,21 +498,6 @@ export const sendEmailChangeNotificationEmail = async (oldEmail, userName, newEm
 // Send account deletion notification
 export const sendAccountDeletionEmail = async (email, userName) => {
   try {
-    let transporter = createTransporter();
-
-    if (!transporter) {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransporter({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-    }
-
     const mailOptions = {
       from: `"TANAW Support" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
       to: email,
@@ -606,7 +575,7 @@ export const sendAccountDeletionEmail = async (email, userName) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sendEmail(mailOptions);
     console.log("✅ Account deletion email sent to:", email);
   } catch (error) {
     console.error("❌ Error sending account deletion email:", error);
@@ -617,22 +586,6 @@ export const sendAccountDeletionEmail = async (email, userName) => {
 // Send welcome email on registration
 export const sendWelcomeEmail = async (email, userName, businessName) => {
   try {
-    let transporter = createTransporter();
-
-    if (!transporter) {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransporter({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-      console.log("📧 Using Ethereal test email account:", testAccount.user);
-    }
-
     const mailOptions = {
       from: `"TANAW Team" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
       to: email,
@@ -759,14 +712,9 @@ export const sendWelcomeEmail = async (email, userName, businessName) => {
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-
-    if (process.env.NODE_ENV === "development" || !process.env.EMAIL_SERVICE) {
-      console.log("📧 Preview URL:", nodemailer.getTestMessageUrl(info));
-    }
-
+    const result = await sendEmail(mailOptions);
     console.log("✅ Welcome email sent to:", email);
-    return { success: true, messageId: info.messageId };
+    return result;
   } catch (error) {
     console.error("❌ Error sending welcome email:", error);
     // Don't throw error - user was already registered
@@ -776,21 +724,6 @@ export const sendWelcomeEmail = async (email, userName, businessName) => {
 // Send contact confirmation to user
 export const sendContactConfirmationEmail = async (email, name) => {
   try {
-    let transporter = createTransporter();
-
-    if (!transporter) {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransporter({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-    }
-
     const mailOptions = {
       from: `"TANAW Support" <${process.env.EMAIL_FROM || "noreply@tanaw.com"}>`,
       to: email,
@@ -863,7 +796,7 @@ export const sendContactConfirmationEmail = async (email, name) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sendEmail(mailOptions);
     console.log("✅ Contact confirmation email sent to:", email);
   } catch (error) {
     console.error("❌ Error sending contact confirmation email:", error);

@@ -21,7 +21,15 @@ export const getMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    res.json({ success: true, data: user });
+    
+    // Use the role from JWT token (session role), not database role
+    // This ensures admin sessions work correctly with license key
+    const userResponse = {
+      ...user.toObject(),
+      role: req.user.role // Override with JWT role
+    };
+    
+    res.json({ success: true, data: userResponse });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error", error: err.message });
   }
