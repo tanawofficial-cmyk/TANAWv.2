@@ -464,33 +464,33 @@ class TANAWBarChartGenerator:
                 if not product_col:
                     print("🔍 No Product mapping found, attempting flexible search...")
                     # First, try actual product name columns
+                for col in df.columns:
+                    col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                    if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
+                           for candidate in product_name_candidates):
+                        product_col = col
+                        print(f"✅ Found product name column: {col}")
+                        break
+                
+                # If no product name found, try brand columns
+                if not product_col:
                     for col in df.columns:
                         col_lower = col.lower().replace(" ", "_").replace("-", "_")
                         if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
-                               for candidate in product_name_candidates):
+                               for candidate in brand_candidates):
                             product_col = col
-                            print(f"✅ Found product name column: {col}")
+                            print(f"⚠️ Using brand column as product: {col}")
                             break
-                    
-                    # If no product name found, try brand columns
-                    if not product_col:
-                        for col in df.columns:
-                            col_lower = col.lower().replace(" ", "_").replace("-", "_")
-                            if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
-                                   for candidate in brand_candidates):
-                                product_col = col
-                                print(f"⚠️ Using brand column as product: {col}")
-                                break
-                    
-                    # Last resort: use category columns (but warn user)
-                    if not product_col:
-                        for col in df.columns:
-                            col_lower = col.lower().replace(" ", "_").replace("-", "_")
-                            if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
-                                   for candidate in category_candidates):
-                                product_col = col
-                                print(f"⚠️ WARNING: Using category column as product (may show categories instead of specific products): {col}")
-                                break
+                
+                # Last resort: use category columns (but warn user)
+                if not product_col:
+                    for col in df.columns:
+                        col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                        if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
+                               for candidate in category_candidates):
+                            product_col = col
+                            print(f"⚠️ WARNING: Using category column as product (may show categories instead of specific products): {col}")
+                            break
                 
                 if product_col:
                     available_cols.append(product_col)
@@ -530,47 +530,47 @@ class TANAWBarChartGenerator:
                 # PRIORITY 3: Flexible search (only if no mapping exists)
                 if not sales_col:
                     print("🔍 No Sales mapping found, attempting flexible search...")
-                    sales_candidates = [
-                        # Mapped names (highest priority)
-                        "Sales", "Amount", "Revenue", "Value", "Total", "Sum",
-                        # Common variations
-                        "Sales_Amount", "SalesAmount", "Sales Amount", "sales_amount",
-                        "Amount", "Total_Amount", "TotalAmount", "Total Amount", "amount",
-                        "Revenue", "Total_Revenue", "TotalRevenue", "Total Revenue", "revenue",
-                        "Value", "Total_Value", "TotalValue", "Total Value", "value",
-                        # Price variations
-                        "Price", "Unit_Price", "UnitPrice", "Unit Price", "unit_price",
-                        "List_Price", "ListPrice", "List Price", "list_price",
-                        # Cost variations
-                        "Cost", "Total_Cost", "TotalCost", "Total Cost", "total_cost",
-                        # Profit variations
-                        "Profit", "Total_Profit", "TotalProfit", "Total Profit", "profit",
-                        "Margin", "Total_Margin", "TotalMargin", "Total Margin", "margin"
-                    ]
-                    
-                    # Flexible matching - check for partial matches too AND validate numeric data
-                    for col in df.columns:
-                        col_lower = col.lower().replace(" ", "_").replace("-", "_")
-                        if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
-                               for candidate in sales_candidates):
-                            # Validate that this column contains numeric data
-                            try:
-                                # Check if column can be converted to numeric
-                                numeric_data = pd.to_numeric(df[col], errors='coerce')
-                                non_null_count = numeric_data.notna().sum()
-                                total_count = len(df)
-                                
-                                # Only accept if at least 50% of values are numeric
-                                if non_null_count / total_count >= 0.5:
-                                    sales_col = col
-                                    available_cols.append(col)
-                                    print(f"✅ Found valid sales column: {col} ({non_null_count}/{total_count} numeric values)")
-                                    break
-                                else:
-                                    print(f"⚠️ Skipping {col} - not enough numeric data ({non_null_count}/{total_count})")
-                            except Exception as e:
-                                print(f"⚠️ Skipping {col} - validation failed: {e}")
-                                continue
+                sales_candidates = [
+                    # Mapped names (highest priority)
+                    "Sales", "Amount", "Revenue", "Value", "Total", "Sum",
+                    # Common variations
+                    "Sales_Amount", "SalesAmount", "Sales Amount", "sales_amount",
+                    "Amount", "Total_Amount", "TotalAmount", "Total Amount", "amount",
+                    "Revenue", "Total_Revenue", "TotalRevenue", "Total Revenue", "revenue",
+                    "Value", "Total_Value", "TotalValue", "Total Value", "value",
+                    # Price variations
+                    "Price", "Unit_Price", "UnitPrice", "Unit Price", "unit_price",
+                    "List_Price", "ListPrice", "List Price", "list_price",
+                    # Cost variations
+                    "Cost", "Total_Cost", "TotalCost", "Total Cost", "total_cost",
+                    # Profit variations
+                    "Profit", "Total_Profit", "TotalProfit", "Total Profit", "profit",
+                    "Margin", "Total_Margin", "TotalMargin", "Total Margin", "margin"
+                ]
+                
+                # Flexible matching - check for partial matches too AND validate numeric data
+                for col in df.columns:
+                    col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                    if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
+                           for candidate in sales_candidates):
+                        # Validate that this column contains numeric data
+                        try:
+                            # Check if column can be converted to numeric
+                            numeric_data = pd.to_numeric(df[col], errors='coerce')
+                            non_null_count = numeric_data.notna().sum()
+                            total_count = len(df)
+                            
+                            # Only accept if at least 50% of values are numeric
+                            if non_null_count / total_count >= 0.5:
+                                sales_col = col
+                                available_cols.append(col)
+                                print(f"✅ Found valid sales column: {col} ({non_null_count}/{total_count} numeric values)")
+                                break
+                            else:
+                                print(f"⚠️ Skipping {col} - not enough numeric data ({non_null_count}/{total_count})")
+                        except Exception as e:
+                            print(f"⚠️ Skipping {col} - validation failed: {e}")
+                            continue
                 
                 # We're ready if we found both a product column and a sales column
                 ready = len(available_cols) >= 2
@@ -606,31 +606,31 @@ class TANAWBarChartGenerator:
                 # PRIORITY 3: Flexible search (only if no mapping exists)
                 if not location_col:
                     print("🔍 No Region mapping found, attempting flexible location search...")
-                    region_candidates = [
+                region_candidates = [
                         "Location", "Branch", "Area", "City", "State", "Country",
                         "Territory", "Zone", "District", "Warehouse", "Store", "Outlet"
                     ]
                     
-                    for col in df.columns:
-                        col_lower = col.lower().replace(" ", "_").replace("-", "_")
-                        
+                for col in df.columns:
+                    col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                    
                         # Skip product-related columns
-                        if any(product_indicator in col_lower for product_indicator in [
-                            "product", "item", "name", "sku", "brand", "category"
-                        ]):
-                            print(f"⚠️ Skipping {col} - appears to be product name, not location")
-                            continue
-                        
+                    if any(product_indicator in col_lower for product_indicator in [
+                        "product", "item", "name", "sku", "brand", "category"
+                    ]):
+                        print(f"⚠️ Skipping {col} - appears to be product name, not location")
+                        continue
+                    
                         # Skip numeric-only columns (like "Count", "Number", etc.)
                         if col_lower in ["count", "number", "id", "qty", "quantity", "units"]:
                             print(f"⚠️ Skipping {col} - numeric identifier, not location")
                             continue
                         
                         if any(candidate.lower() in col_lower or col_lower in candidate.lower() 
-                               for candidate in region_candidates):
-                            location_col = col
+                           for candidate in region_candidates):
+                        location_col = col
                             print(f"✅ Found location column via flexible search: {col}")
-                            break
+                        break
                 
                 if location_col:
                     available_cols.append(location_col)
@@ -676,47 +676,47 @@ class TANAWBarChartGenerator:
                 # PRIORITY 3: Flexible search (only if no mapping exists)
                 if not sales_col:
                     print("🔍 No Sales mapping found, attempting flexible search...")
-                    sales_candidates = [
-                        # Mapped names (highest priority)
-                        "Sales", "Amount", "Revenue", "Value", "Total", "Sum",
-                        # Common variations
-                        "Sales_Amount", "SalesAmount", "Sales Amount", "sales_amount",
-                        "Amount", "Total_Amount", "TotalAmount", "Total Amount", "amount",
-                        "Revenue", "Total_Revenue", "TotalRevenue", "Total Revenue", "revenue",
-                        "Value", "Total_Value", "TotalValue", "Total Value", "value",
-                        # Price variations
-                        "Price", "Unit_Price", "UnitPrice", "Unit Price", "unit_price",
-                        "List_Price", "ListPrice", "List Price", "list_price",
-                        # Cost variations
-                        "Cost", "Total_Cost", "TotalCost", "Total Cost", "total_cost",
-                        # Profit variations
-                        "Profit", "Total_Profit", "TotalProfit", "Total Profit", "profit",
-                        "Margin", "Total_Margin", "TotalMargin", "Total Margin", "margin"
-                    ]
-                    
-                    # Flexible matching - check for partial matches too AND validate numeric data
-                    for col in df.columns:
-                        col_lower = col.lower().replace(" ", "_").replace("-", "_")
-                        if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
-                               for candidate in sales_candidates):
-                            # Validate that this column contains numeric data
-                            try:
-                                # Check if column can be converted to numeric
-                                numeric_data = pd.to_numeric(df[col], errors='coerce')
-                                non_null_count = numeric_data.notna().sum()
-                                total_count = len(df)
-                                
-                                # Only accept if at least 50% of values are numeric
-                                if non_null_count / total_count >= 0.5:
-                                    sales_col = col
-                                    available_cols.append(col)
-                                    print(f"✅ Found valid sales column: {col} ({non_null_count}/{total_count} numeric values)")
-                                    break
-                                else:
-                                    print(f"⚠️ Skipping {col} - not enough numeric data ({non_null_count}/{total_count})")
-                            except Exception as e:
-                                print(f"⚠️ Skipping {col} - validation failed: {e}")
-                                continue
+                sales_candidates = [
+                    # Mapped names (highest priority)
+                    "Sales", "Amount", "Revenue", "Value", "Total", "Sum",
+                    # Common variations
+                    "Sales_Amount", "SalesAmount", "Sales Amount", "sales_amount",
+                    "Amount", "Total_Amount", "TotalAmount", "Total Amount", "amount",
+                    "Revenue", "Total_Revenue", "TotalRevenue", "Total Revenue", "revenue",
+                    "Value", "Total_Value", "TotalValue", "Total Value", "value",
+                    # Price variations
+                    "Price", "Unit_Price", "UnitPrice", "Unit Price", "unit_price",
+                    "List_Price", "ListPrice", "List Price", "list_price",
+                    # Cost variations
+                    "Cost", "Total_Cost", "TotalCost", "Total Cost", "total_cost",
+                    # Profit variations
+                    "Profit", "Total_Profit", "TotalProfit", "Total Profit", "profit",
+                    "Margin", "Total_Margin", "TotalMargin", "Total Margin", "margin"
+                ]
+                
+                # Flexible matching - check for partial matches too AND validate numeric data
+                for col in df.columns:
+                    col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                    if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
+                           for candidate in sales_candidates):
+                        # Validate that this column contains numeric data
+                        try:
+                            # Check if column can be converted to numeric
+                            numeric_data = pd.to_numeric(df[col], errors='coerce')
+                            non_null_count = numeric_data.notna().sum()
+                            total_count = len(df)
+                            
+                            # Only accept if at least 50% of values are numeric
+                            if non_null_count / total_count >= 0.5:
+                                sales_col = col
+                                available_cols.append(col)
+                                print(f"✅ Found valid sales column: {col} ({non_null_count}/{total_count} numeric values)")
+                                break
+                            else:
+                                print(f"⚠️ Skipping {col} - not enough numeric data ({non_null_count}/{total_count})")
+                        except Exception as e:
+                            print(f"⚠️ Skipping {col} - validation failed: {e}")
+                            continue
                 
                 # We're ready if we found both a location column and a sales column
                 ready = len(available_cols) >= 2
@@ -913,22 +913,22 @@ class TANAWBarChartGenerator:
                 # PRIORITY 3: Flexible search (only if no mapping)
                 if not item_col:
                     print("🔍 No Product mapping, attempting flexible item search...")
-                    item_candidates = [
+                item_candidates = [
                         "Item", "Product", "SKU", "Item_Code", "Product_Name", "Item_Name"
-                    ]
+                ]
+                
+                for col in df.columns:
+                    col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                    # Skip customer-related columns
+                    if any(customer_kw in col_lower for customer_kw in ["customer", "client", "buyer", "person"]):
+                        print(f"⚠️ Skipping {col} - appears to be customer name, not product")
+                        continue
                     
-                    for col in df.columns:
-                        col_lower = col.lower().replace(" ", "_").replace("-", "_")
-                        # Skip customer-related columns
-                        if any(customer_kw in col_lower for customer_kw in ["customer", "client", "buyer", "person"]):
-                            print(f"⚠️ Skipping {col} - appears to be customer name, not product")
-                            continue
-                        
-                        if any(candidate.lower() in col_lower or col_lower in candidate.lower() 
-                               for candidate in item_candidates):
-                            item_col = col
-                            print(f"✅ Found item column via flexible search: {col}")
-                            break
+                    if any(candidate.lower() in col_lower or col_lower in candidate.lower() 
+                           for candidate in item_candidates):
+                        item_col = col
+                        print(f"✅ Found item column via flexible search: {col}")
+                        break
                 
                 if item_col:
                     available_cols.append(item_col)
@@ -987,22 +987,22 @@ class TANAWBarChartGenerator:
                 # PRIORITY 3: Flexible search (only if no mapping)
                 if not item_col:
                     print("🔍 No Product mapping, attempting flexible item search...")
-                    item_candidates = [
+                item_candidates = [
                         "Item", "Product", "SKU", "Item_Code", "Product_Name", "Item_Name"
-                    ]
+                ]
+                
+                for col in df.columns:
+                    col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                    # Skip customer-related columns
+                    if any(customer_kw in col_lower for customer_kw in ["customer", "client", "buyer", "person"]):
+                        print(f"⚠️ Skipping {col} - appears to be customer name, not product")
+                        continue
                     
-                    for col in df.columns:
-                        col_lower = col.lower().replace(" ", "_").replace("-", "_")
-                        # Skip customer-related columns
-                        if any(customer_kw in col_lower for customer_kw in ["customer", "client", "buyer", "person"]):
-                            print(f"⚠️ Skipping {col} - appears to be customer name, not product")
-                            continue
-                        
-                        if any(candidate.lower() in col_lower or col_lower in candidate.lower() 
-                               for candidate in item_candidates):
-                            item_col = col
-                            print(f"✅ Found item column via flexible search: {col}")
-                            break
+                    if any(candidate.lower() in col_lower or col_lower in candidate.lower() 
+                           for candidate in item_candidates):
+                        item_col = col
+                        print(f"✅ Found item column via flexible search: {col}")
+                        break
                 
                 if item_col:
                     available_cols.append(item_col)

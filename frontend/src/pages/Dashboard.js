@@ -427,63 +427,75 @@ const UserDashboard = () => {
   const progressSteps = ["upload", "analyzing", "processing", "visualization"];
   const progressIndex = progressSteps.indexOf(progressStep);
 
-  // 🔍 Search and Date Filter Functionality
-  const filteredDatasets = datasets.filter(dataset => {
-    // Search filter
-    const matchesSearch = !searchTerm || 
-      dataset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dataset.fileName.toLowerCase().includes(searchTerm.toLowerCase());
+  // 🔍 Search and Date Filter Functionality (with useMemo to prevent unnecessary re-renders)
+  const filteredDatasets = React.useMemo(() => {
+    console.log("🔍 Filtering datasets...", { 
+      totalDatasets: datasets.length, 
+      searchTerm, 
+      dateFilter 
+    });
     
-    // Date filter - compare dates properly
-    let matchesDate = true;
-    if (dateFilter) {
-      try {
-        // Debug logging
-        console.log("📅 Date Filter Debug:", {
-          filterDate: dateFilter,
-          datasetName: dataset.name,
-          datasetUploadDate: dataset.uploadDate,
-          datasetUploadDateType: typeof dataset.uploadDate
-        });
-
-        // Convert both to Date objects for comparison
-        const filterDate = new Date(dateFilter);
-        const datasetDate = dataset.uploadDate instanceof Date 
-          ? dataset.uploadDate 
-          : new Date(dataset.uploadDate);
-        
-        // Check if dates are valid
-        if (isNaN(filterDate.getTime()) || isNaN(datasetDate.getTime())) {
-          console.warn("⚠️ Invalid date detected:", {
-            filterDate,
-            datasetDate,
-            filterDateValid: !isNaN(filterDate.getTime()),
-            datasetDateValid: !isNaN(datasetDate.getTime())
-          });
-          matchesDate = true; // If invalid date, don't filter out
-        } else {
-          // Get date strings in YYYY-MM-DD format for exact comparison
-          const filterDateStr = filterDate.toISOString().split('T')[0];
-          const datasetDateStr = datasetDate.toISOString().split('T')[0];
+    const filtered = datasets.filter(dataset => {
+      // Search filter - search in name and fileName
+      const matchesSearch = !searchTerm || 
+        dataset.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        dataset.fileName?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Date filter - compare dates properly (timezone-safe)
+      let matchesDate = true;
+      if (dateFilter) {
+        try {
+          // Parse filter date at midnight local time
+          const filterDate = new Date(dateFilter + 'T00:00:00');
           
-          // EXACT DATE MATCH - show only datasets from this specific date
-          matchesDate = filterDateStr === datasetDateStr;
+          // Parse dataset date
+          const datasetDate = dataset.uploadDate instanceof Date 
+            ? dataset.uploadDate 
+            : new Date(dataset.uploadDate);
           
-          console.log("📅 Date comparison:", {
-            filterDateStr,
-            datasetDateStr,
-            matchesDate,
-            logic: "EXACT MATCH (same day only)"
-          });
+          // Check if dates are valid
+          if (isNaN(filterDate.getTime()) || isNaN(datasetDate.getTime())) {
+            console.warn("⚠️ Invalid date detected");
+            matchesDate = true; // If invalid date, don't filter out
+          } else {
+            // Compare using local date components (ignores time and timezone)
+            const filterYear = filterDate.getFullYear();
+            const filterMonth = filterDate.getMonth();
+            const filterDay = filterDate.getDate();
+            
+            const datasetYear = datasetDate.getFullYear();
+            const datasetMonth = datasetDate.getMonth();
+            const datasetDay = datasetDate.getDate();
+            
+            // EXACT DATE MATCH - compare year, month, and day separately
+            matchesDate = (
+              filterYear === datasetYear &&
+              filterMonth === datasetMonth &&
+              filterDay === datasetDay
+            );
+            
+            console.log("📅 Date comparison:", {
+              filterDate: `${filterYear}-${filterMonth + 1}-${filterDay}`,
+              datasetDate: `${datasetYear}-${datasetMonth + 1}-${datasetDay}`,
+              matchesDate
+            });
+          }
+        } catch (error) {
+          console.error("❌ Date comparison error:", error);
+          matchesDate = true; // If error, don't filter out
         }
-      } catch (error) {
-        console.error("❌ Date comparison error:", error);
-        matchesDate = true; // If error, don't filter out
       }
-    }
+      
+      return matchesSearch && matchesDate;
+    });
     
-    return matchesSearch && matchesDate;
-  });
+    console.log("🔍 Filtered results:", { 
+      filteredCount: filtered.length, 
+      totalCount: datasets.length 
+    });
+    
+    return filtered;
+  }, [datasets, searchTerm, dateFilter]);
 
   // 🗑️ Delete Dataset Function
   const handleDeleteDataset = async (dataset) => {
@@ -2275,17 +2287,31 @@ const UserDashboard = () => {
                 </svg>
                 <p className="text-gray-500 text-lg font-medium">No datasets found</p>
                 <p className="text-gray-400 text-sm">
-                  {searchTerm 
-                    ? `No datasets match "${searchTerm}". Try a different search term.`
-                    : "Upload a dataset to get started with analytics."}
+                  {(searchTerm || dateFilter)
+                    ? (
+                      <>
+                        No datasets match your filters
+                        {searchTerm && ` "${searchTerm}"`}
+                        {searchTerm && dateFilter && " and "}
+                        {dateFilter && ` on ${new Date(dateFilter).toLocaleDateString()}`}.
+                        <br />
+                        Try adjusting your search or filters.
+                      </>
+                    )
+                    : datasets.length === 0
+                      ? "Upload a dataset to get started with analytics."
+                      : "No datasets available."}
                 </p>
-                {searchTerm && (
-                            <button
-                    onClick={() => setSearchTerm("")}
+                {(searchTerm || dateFilter) && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm("");
+                      setDateFilter("");
+                    }}
                     className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                   >
-                    Clear Search
-                            </button>
+                    Clear All Filters
+                  </button>
                 )}
               </div>
             </div>

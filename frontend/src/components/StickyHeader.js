@@ -31,13 +31,14 @@ const StickyHeader = ({ user, onUserUpdate, onLogout, onSearch, onDateFilter }) 
     }
   };
 
-  // Close search input and date filter when clicking outside
+  // Close search input and date filter when clicking outside (but keep search term)
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Only hide the search input, don't clear the search term
+      // Users can clear using the X button or Clear Filters button
       if (showSearchInput && !event.target.closest('.search-container')) {
         setShowSearchInput(false);
-        setSearchTerm("");
-        handleSearchChange(""); // Clear the search filter
+        // DON'T clear search term - let it persist!
       }
       if (showDateFilter && !event.target.closest('.date-filter-container')) {
         setShowDateFilter(false);

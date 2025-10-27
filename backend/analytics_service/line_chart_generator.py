@@ -517,29 +517,29 @@ class TANAWLineChartGenerator:
                 # PRIORITY 3: Flexible search
                 if not date_col:
                     print("🔍 No Date mapping found, attempting flexible search...")
-                    date_candidates = [
-                        "Date", "DateTime", "Date_Time", "Timestamp", "Time",
-                        "Sale_Date", "SaleDate", "Transaction_Date", "TransactionDate",
-                        "Order_Date", "OrderDate", "Created_At", "CreatedAt",
-                        "Period", "Day", "Month", "Year", "Fecha", "Fch"
-                    ]
+                date_candidates = [
+                    "Date", "DateTime", "Date_Time", "Timestamp", "Time",
+                    "Sale_Date", "SaleDate", "Transaction_Date", "TransactionDate",
+                    "Order_Date", "OrderDate", "Created_At", "CreatedAt",
+                    "Period", "Day", "Month", "Year", "Fecha", "Fch"
+                ]
+                
+                for col in df.columns:
+                    col_str = str(col)
+                    col_lower = col_str.lower().replace(" ", "_").replace("-", "_")
                     
-                    for col in df.columns:
-                        col_str = str(col)
-                        col_lower = col_str.lower().replace(" ", "_").replace("-", "_")
-                        
-                        # Check for date patterns
-                        if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
-                               for candidate in date_candidates):
-                            # Validate it's actually a date column
-                            try:
-                                pd.to_datetime(df[col], errors='coerce')
-                                date_col = col
-                                available_cols.append(col)
-                                print(f"✅ Found date column via flexible search: {col}")
-                                break
-                            except:
-                                continue
+                    # Check for date patterns
+                    if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
+                           for candidate in date_candidates):
+                        # Validate it's actually a date column
+                        try:
+                            pd.to_datetime(df[col], errors='coerce')
+                            date_col = col
+                            available_cols.append(col)
+                            print(f"✅ Found date column via flexible search: {col}")
+                            break
+                        except:
+                            continue
                 
                 # Check for Value column - 3-TIER PRIORITIZATION
                 # PRIORITY 1: Use explicitly mapped "Sales" column
@@ -570,38 +570,38 @@ class TANAWLineChartGenerator:
                 # PRIORITY 3: Flexible search
                 if not value_col:
                     print("🔍 No Sales mapping found, attempting flexible search...")
-                    value_candidates = [
-                        "Sales", "Amount", "Value", "Total", "Sum",
-                        "Sales_Amount", "SalesAmount", "Total_Sales", "TotalSales",
-                        "Expense", "Expense_Amount", "ExpenseAmount",
-                        "Balance", "GL_Balance", "Account_Balance",
-                        "Income", "Cost",
-                        "Vnts", "Ventas"  # Spanish variations
-                    ]
+                value_candidates = [
+                    "Sales", "Amount", "Value", "Total", "Sum",
+                    "Sales_Amount", "SalesAmount", "Total_Sales", "TotalSales",
+                    "Expense", "Expense_Amount", "ExpenseAmount",
+                    "Balance", "GL_Balance", "Account_Balance",
+                    "Income", "Cost",
+                    "Vnts", "Ventas"  # Spanish variations
+                ]
+                
+                for col in df.columns:
+                    col_str = str(col)
+                    col_lower = col_str.lower().replace(" ", "_").replace("-", "_")
                     
-                    for col in df.columns:
-                        col_str = str(col)
-                        col_lower = col_str.lower().replace(" ", "_").replace("-", "_")
-                        
-                        if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
-                               for candidate in value_candidates):
-                            # Validate numeric
-                            try:
-                                numeric_data = pd.to_numeric(df[col], errors='coerce')
-                                non_null_count = numeric_data.notna().sum()
-                                total_count = len(df)
-                                
-                                # Only accept if at least 50% of values are numeric
-                                if non_null_count / total_count >= 0.5:
-                                    value_col = col
-                                    available_cols.append(col)
-                                    print(f"✅ Found valid value column: {col} ({non_null_count}/{total_count} numeric values)")
-                                    break
-                                else:
-                                    print(f"⚠️ Skipping {col} - not enough numeric data ({non_null_count}/{total_count})")
-                            except Exception as e:
-                                print(f"⚠️ Skipping {col} - validation failed: {e}")
-                                continue
+                    if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
+                           for candidate in value_candidates):
+                        # Validate numeric
+                        try:
+                            numeric_data = pd.to_numeric(df[col], errors='coerce')
+                            non_null_count = numeric_data.notna().sum()
+                            total_count = len(df)
+                            
+                            # Only accept if at least 50% of values are numeric
+                            if non_null_count / total_count >= 0.5:
+                                value_col = col
+                                available_cols.append(col)
+                                print(f"✅ Found valid value column: {col} ({non_null_count}/{total_count} numeric values)")
+                                break
+                            else:
+                                print(f"⚠️ Skipping {col} - not enough numeric data ({non_null_count}/{total_count})")
+                        except Exception as e:
+                            print(f"⚠️ Skipping {col} - validation failed: {e}")
+                            continue
                 
                 ready = len(available_cols) >= 2
                 missing_cols = [] if ready else ["Date column", "Value column"]
