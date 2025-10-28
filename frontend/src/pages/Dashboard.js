@@ -16,7 +16,6 @@ const UserDashboard = () => {
   const [dateFilter, setDateFilter] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [progressStep, setProgressStep] = useState("upload");
   
   // 🆕 Dataset-specific states
   const [datasets, setDatasets] = useState([]); // Store multiple datasets
@@ -73,13 +72,11 @@ const UserDashboard = () => {
     }
   }, [user]);
 
-  // 🔒 Handle session expiration actions
-  const handleRefreshPage = () => {
-    window.location.reload();
-  };
-
+  // 🔒 Handle session expiration - redirect to login
   const handleRelogin = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
     window.location.href = "/login";
   };
 
@@ -259,7 +256,6 @@ const UserDashboard = () => {
     }
     
     setSelectedFile(file);
-    setProgressStep("upload");
     toast.success(`✓ File selected: ${file.name}`, { duration: 2000 });
   };
 
@@ -282,7 +278,6 @@ const UserDashboard = () => {
     try {
       setIsUploading(true);
       setUploading(true);
-      setProgressStep("analyzing");
 
       console.log("📤 Uploading file to backend...");
 
@@ -388,13 +383,11 @@ const UserDashboard = () => {
       if (data.status === "completed" || nextStep === "processing_complete" || nextStep === "analysis_complete") {
         console.log("✅ Completing analysis flow");
         toast.success("✅ File analyzed successfully!");
-        setProgressStep("visualization");
         
         // 🔄 Refresh datasets from backend (dataset is already saved)
         setTimeout(() => {
           loadUserDatasets();
-          // ✅ Reset progress bar and clear file selection after successful upload
-          setProgressStep("upload");
+          // ✅ Clear file selection after successful upload
           setSelectedFile(null);
         }, 1000);
 
@@ -415,17 +408,11 @@ const UserDashboard = () => {
     } catch (err) {
       console.error("❌ Upload failed", err);
       toast.error(err.response?.data?.message || "Upload failed. Please try again.");
-      setProgressStep("upload");
     } finally {
       setIsUploading(false);
       setUploading(false);
     }
   };
-
-
-  // 🧭 Enhanced progress indicator helper
-  const progressSteps = ["upload", "analyzing", "processing", "visualization"];
-  const progressIndex = progressSteps.indexOf(progressStep);
 
   // 🔍 Search and Date Filter Functionality (with useMemo to prevent unnecessary re-renders)
   const filteredDatasets = React.useMemo(() => {
@@ -564,6 +551,11 @@ const UserDashboard = () => {
 
   // 🗑️ Confirm Delete Dataset
   const confirmDeleteDataset = (dataset) => {
+    // Allow deletion of other datasets, just not the one being uploaded
+    if ((uploading || isUploading) && !dataset.analysisData) {
+      toast.error("⏳ This dataset is still being processed. Please wait before deleting it.");
+      return;
+    }
     setDatasetToDelete(dataset);
     setShowDeleteModal(true);
   };
@@ -577,6 +569,8 @@ const UserDashboard = () => {
   const handleLogout = () => {
     setShowLogoutModal(false); // Close modal
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
     toast.success("👋 Logged out successfully! Redirecting to home...");
     // Redirect to landing page
     setTimeout(() => {
@@ -1471,12 +1465,16 @@ const UserDashboard = () => {
 
   // 🎯 Handle showing analytics for a specific dataset
   const handleShowAnalytics = async (dataset) => {
+    // Allow viewing other datasets while upload is in progress
+    // Only prevent viewing the dataset that's currently being uploaded
+    if ((uploading || isUploading) && !dataset.analysisData) {
+      toast.error("⏳ This dataset is still being analyzed. Please wait a moment.");
+      return;
+    }
+    
     console.log("🎯 Showing analytics for dataset:", dataset);
     console.log("🎯 Dataset analysisId:", dataset.analysisId);
     console.log("🎯 Dataset analysisData:", dataset.analysisData);
-    
-    // Reset progress bar to upload state
-    setProgressStep("upload");
     
     setSelectedDatasetId(dataset.id);
     setSelectedDatasetData(dataset.analysisData);
@@ -1536,8 +1534,6 @@ const UserDashboard = () => {
     setSelectedDatasetId(null);
     setSelectedDatasetData(null);
     setCharts([]);
-    // Reset progress bar to upload state
-    setProgressStep("upload");
     
     // Show feedback modal after viewing analytics
     // 30% chance to avoid overwhelming users
@@ -1629,18 +1625,31 @@ const UserDashboard = () => {
                   </span>
                       <button
                         onClick={() => handleShowAnalytics(dataset)}
-                        className="bg-blue-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs hover:bg-blue-700 transition flex items-center gap-1"
+                        disabled={(uploading || isUploading) && !dataset.analysisData}
+                        className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs transition flex items-center gap-1 ${
+                          (uploading || isUploading) && !dataset.analysisData
+                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                        title={(uploading || isUploading) && !dataset.analysisData ? "Dataset is being analyzed..." : "View analytics"}
                       >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                        <span className="hidden sm:inline">Show Analytics</span>
+                        <span className="hidden sm:inline">
+                          {(uploading || isUploading) && !dataset.analysisData ? "Analyzing..." : "Show Analytics"}
+                        </span>
                         <span className="sm:hidden">View</span>
                       </button>
                       <button
                         onClick={() => confirmDeleteDataset(dataset)}
-                        className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition flex items-center gap-1"
-                        title="Delete dataset"
+                        disabled={(uploading || isUploading) && !dataset.analysisData}
+                        className={`px-3 py-1 rounded text-xs transition flex items-center gap-1 ${
+                          (uploading || isUploading) && !dataset.analysisData
+                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
+                            : 'bg-red-600 text-white hover:bg-red-700'
+                        }`}
+                        title={(uploading || isUploading) && !dataset.analysisData ? "Dataset is being processed..." : "Delete dataset"}
                       >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -2338,6 +2347,24 @@ const UserDashboard = () => {
          }}
        />
 
+       {/* Upload Progress Banner */}
+       {(uploading || isUploading) && (
+         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 shadow-lg">
+           <div className="max-w-7xl mx-auto flex items-center justify-between">
+             <div className="flex items-center gap-3">
+               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+               <div>
+                 <p className="font-semibold text-sm">Uploading and analyzing dataset...</p>
+                 <p className="text-xs opacity-90">You can continue viewing other datasets while we process this one</p>
+               </div>
+             </div>
+             <div className="text-xs bg-white/20 px-3 py-1 rounded-full">
+               Processing...
+             </div>
+           </div>
+         </div>
+       )}
+
        {/* Main Content - Responsive Container */}
        <div className="flex flex-col px-3 sm:px-6 md:px-8 lg:px-12 py-4 sm:py-6 md:py-8 overflow-y-auto max-w-7xl mx-auto w-full">
 
@@ -2384,25 +2411,6 @@ const UserDashboard = () => {
           </div>
         )}
 
-        {/* Progress Tracker - Responsive */}
-        <div className="flex flex-wrap items-center justify-between mb-4 sm:mb-6 text-xs sm:text-sm text-gray-600 gap-2">
-          {progressSteps.map((step, i) => (
-            <div key={step} className="flex items-center space-x-1 sm:space-x-2">
-               <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${i <= progressIndex ? "bg-blue-600" : "bg-gray-300"}`} />
-               <span className={`hidden sm:inline ${i <= progressIndex ? "text-blue-600 font-medium" : ""}`}>
-                {step.charAt(0).toUpperCase() + step.slice(1)}
-              </span>
-              <span className={`sm:hidden ${i <= progressIndex ? "text-blue-600 font-medium" : ""}`}>
-                {step.charAt(0).toUpperCase()}
-              </span>
-              {i < progressSteps.length - 1 && <div className="w-4 sm:w-6 border-t border-gray-300"></div>}
-            </div>
-          ))}
-        </div>
-
-
-
-
         {/* 🔒 Session Expired Modal */}
         {showSessionExpiredModal && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
@@ -2421,23 +2429,15 @@ const UserDashboard = () => {
                 </h2>
                 
                 <p className="text-sm text-gray-600 mb-6 text-center">
-                  Your session has expired. Please refresh the page to continue or log in again to access your account.
+                  Your session has expired due to inactivity. Please log in again to continue using TANAW.
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={handleRefreshPage}
-                    className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
-                  >
-                    🔄 Refresh Page
-                  </button>
-                  <button
-                    onClick={handleRelogin}
-                    className="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-gray-700 transition"
-                  >
-                    🔑 Log In Again
-                  </button>
-                </div>
+                <button
+                  onClick={handleRelogin}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition shadow-lg"
+                >
+                  🔑 Log In Again
+                </button>
               </div>
             </div>
           </div>

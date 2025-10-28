@@ -27,6 +27,14 @@ const AdminLoginForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    
+    // Validate license key is provided
+    if (!formData.licenseKey || formData.licenseKey.trim() === "") {
+      setErrorMessage("🔑 Admin license key is required");
+      toast.error("🔑 Admin license key is required");
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -36,7 +44,13 @@ const AdminLoginForm = () => {
         licenseKey: formData.licenseKey,
       });
 
-      if (res.success) {
+      if (res.success && res.data.role === "admin") {
+        // Clear any existing session data before storing new admin session
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("role");
+        
+        // Set new admin session
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
         localStorage.setItem("role", "admin");

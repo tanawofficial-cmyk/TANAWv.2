@@ -7,12 +7,13 @@ import {
   getDatabaseStats,
   getPerformanceMetrics,
 } from "../controllers/connectivityController.js";
-import { authMiddleware } from "../middleware/authMiddleware.js";
+import { authMiddleware, authorizeAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Apply authentication middleware to all connectivity routes
+// Apply authentication AND admin authorization middleware to all connectivity routes
 router.use(authMiddleware);
+router.use(authorizeAdmin);
 
 /**
  * ===========================

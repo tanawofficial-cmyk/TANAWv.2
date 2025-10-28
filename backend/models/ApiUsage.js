@@ -109,18 +109,26 @@ apiUsageSchema.statics.getTotalTokens = async function(startDate, endDate) {
         totalCompletionTokens: { $sum: '$tokensCompletion' },
         totalCost: { $sum: '$estimatedCost' },
         totalCalls: { $sum: 1 },
+        successfulCalls: { $sum: { $cond: ['$success', 1, 0] } },
         avgResponseTime: { $avg: '$responseTime' }
       }
     }
   ]);
-  return result[0] || {
+  
+  const data = result[0] || {
     totalTokens: 0,
     totalPromptTokens: 0,
     totalCompletionTokens: 0,
     totalCost: 0,
     totalCalls: 0,
+    successfulCalls: 0,
     avgResponseTime: 0
   };
+  
+  // Calculate success rate
+  data.successRate = data.totalCalls > 0 ? data.successfulCalls / data.totalCalls : 0;
+  
+  return data;
 };
 
 // Static method to get usage breakdown by endpoint

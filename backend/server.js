@@ -13,6 +13,7 @@ import feedbackRoutes from "./routes/feedback.js";
 import adminRoutes from "./routes/adminRoute.js";
 import connectivityRoutes from "./routes/connectivityRoute.js";
 import contactRoutes from "./routes/contactRoute.js";
+import migrationRoutes from "./routes/migrationRoute.js";
 
 dotenv.config();
 
@@ -69,6 +70,7 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/admin/connectivity", connectivityRoutes);
+app.use("/api/admin/migrate", migrationRoutes);
 
 // Connect MongoDB
 mongoose

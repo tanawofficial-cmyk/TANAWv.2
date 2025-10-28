@@ -15,6 +15,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import FeaturesPage from "./pages/FeaturesPage";
 import UpdatesPage from "./pages/UpdatesPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 
 function App() {
@@ -27,7 +28,6 @@ function App() {
         {/* Auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/admin-login" element={<AdminLogin />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/verify-email/:token" element={<VerifyEmail />} />
@@ -35,8 +35,17 @@ function App() {
         {/* User Dashboard */}
         <Route path="/userDashboard" element={<Dashboard />} />
 
-        {/* Admin Dashboard with nested routes */}
-        <Route path="/admin/*" element={<AdminDashboard />} />
+        {/* Admin Dashboard - Protected Routes */}
+        <Route path="/admin-dashboard" element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/*" element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
 
         {/* Product Pages */}
         <Route path="/features" element={<FeaturesPage />} />

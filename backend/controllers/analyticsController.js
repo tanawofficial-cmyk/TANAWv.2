@@ -102,12 +102,8 @@ export const getAnalyticsData = async (req, res) => {
       createdAt: { $gte: startOfMonth }
     });
 
-    // Get active users (users with recent activity)
-    const activeUsers = await Analytics.distinct('userId', {
-      timestamp: date 
-        ? { $gte: startDate, $lte: endDate }  // Specific date
-        : { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) }  // Last 24h for range
-    });
+    // Get active users (users who have uploaded at least one dataset)
+    const activeUsers = await User.find({ datasetCount: { $gt: 0 } }).select('_id');
 
     // Get downloads
     const downloads = await Analytics.countDocuments({
@@ -134,9 +130,12 @@ export const getAnalyticsData = async (req, res) => {
       createdAt: { $gte: previousStartDate, $lte: previousEndDate }
     });
     
-    const previousActiveUsers = await Analytics.distinct('userId', {
-      timestamp: { $gte: new Date(previousStartDate.getTime() - 24 * 60 * 60 * 1000), $lte: previousEndDate }
-    });
+    // Get previous active users (users who had datasets in the previous period)
+    // Note: This is an approximation since we can't easily track historical datasetCount
+    const previousActiveUsers = await User.find({ 
+      datasetCount: { $gt: 0 },
+      createdAt: { $lte: previousEndDate }
+    }).select('_id');
     
     // Calculate percentage changes
     const datasetsGrowth = previousDatasets > 0 ? ((totalDatasets - previousDatasets) / previousDatasets) * 100 : 0;

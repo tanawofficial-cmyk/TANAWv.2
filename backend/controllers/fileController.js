@@ -176,6 +176,39 @@ const uploadFile = async (req, res) => {
 
     await dataset.save();
 
+    // 📊 Update user's dataset count
+    try {
+      await User.findByIdAndUpdate(
+        req.user.id,
+        { $inc: { datasetCount: 1 } },
+        { new: true }
+      );
+      console.log(`✅ Updated user ${req.user.id} dataset count`);
+    } catch (userUpdateError) {
+      console.error('Failed to update user dataset count:', userUpdateError);
+      // Don't fail the upload if user update fails
+    }
+
+    // 📊 Track file upload analytics
+    try {
+      await Analytics.create({
+        userId: req.user.id,
+        type: 'file_upload',
+        details: {
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          rowCount: jsonData.length,
+          datasetId: dataset._id,
+          datasetType: flaskData.datasetInfo?.dataset_type || 'unknown',
+          timestamp: new Date()
+        }
+      });
+      console.log(`📊 Tracked file upload event for dataset ${dataset._id}`);
+    } catch (analyticsError) {
+      console.error('Failed to track file upload:', analyticsError);
+      // Don't fail the upload if analytics tracking fails
+    }
+
     // 📊 Track chart generation analytics
     const charts = flaskData.analysis?.charts || [];
     if (charts.length > 0) {
@@ -195,6 +228,14 @@ const uploadFile = async (req, res) => {
           });
         }
         console.log(`📊 Tracked ${charts.length} chart generation events`);
+        
+        // 📊 Update user's charts generated count
+        await User.findByIdAndUpdate(
+          req.user.id,
+          { $inc: { chartsGenerated: charts.length } },
+          { new: true }
+        );
+        console.log(`✅ Updated user ${req.user.id} charts generated count (+${charts.length})`);
         
         // 📊 Log additional API usage for chart generation
         const chartTokens = charts.length * 200; // Estimate tokens per chart
@@ -521,6 +562,56 @@ const uploadClean = async (req, res) => {
     await dataset.save();
     console.log(`✅ Saved dataset ${dataset._id} to MongoDB`);
 
+    // 📊 Update user's dataset count
+    try {
+      await User.findByIdAndUpdate(
+        req.user.id,
+        { $inc: { datasetCount: 1 } },
+        { new: true }
+      );
+      console.log(`✅ Updated user ${req.user.id} dataset count`);
+    } catch (userUpdateError) {
+      console.error('Failed to update user dataset count:', userUpdateError);
+      // Don't fail the upload if user update fails
+    }
+
+    // 📊 Track file upload analytics
+    try {
+      await Analytics.create({
+        userId: req.user.id,
+        type: 'file_upload',
+        details: {
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          rowCount: flaskData.rowCount || jsonData.length,
+          datasetId: dataset._id,
+          datasetType: flaskData.datasetInfo?.dataset_type || 'unknown',
+          timestamp: new Date()
+        }
+      });
+      console.log(`📊 Tracked file upload event for dataset ${dataset._id}`);
+    } catch (analyticsError) {
+      console.error('Failed to track file upload:', analyticsError);
+      // Don't fail the upload if analytics tracking fails
+    }
+
+    // 📊 Track chart generation and update user's charts count
+    const charts = flaskData.analysis?.charts || [];
+    if (charts.length > 0) {
+      try {
+        // Update user's charts generated count
+        await User.findByIdAndUpdate(
+          req.user.id,
+          { $inc: { chartsGenerated: charts.length } },
+          { new: true }
+        );
+        console.log(`✅ Updated user ${req.user.id} charts generated count (+${charts.length})`);
+      } catch (chartUpdateError) {
+        console.error('Failed to update user charts count:', chartUpdateError);
+        // Don't fail the upload if chart count update fails
+      }
+    }
+
     // === Return Flask response with MongoDB dataset ID ===
     const responsePayload = {
       ...flaskData, // Return all Flask data
@@ -689,6 +780,37 @@ const deleteDataset = async (req, res) => {
     }
 
     console.log(`✅ Dataset deleted: ${dataset.originalName || dataset.fileName}`);
+
+    // 🧹 Delete the actual file from filesystem
+    if (dataset.filePath) {
+      try {
+        fs.unlinkSync(dataset.filePath);
+        console.log(`🧹 Deleted file from disk: ${dataset.filePath}`);
+      } catch (fileError) {
+        console.error('⚠️ Failed to delete file from disk:', fileError.message);
+        // Don't fail the delete if file cleanup fails (file might not exist)
+      }
+    }
+
+    // 📊 Decrement user's dataset count and charts count
+    try {
+      const chartsCount = dataset.visualizationData?.length || 0;
+      
+      await User.findByIdAndUpdate(
+        userId,
+        { 
+          $inc: { 
+            datasetCount: -1,
+            chartsGenerated: -chartsCount
+          } 
+        },
+        { new: true }
+      );
+      console.log(`✅ Decremented user ${userId} dataset count and charts count (-${chartsCount} charts)`);
+    } catch (userUpdateError) {
+      console.error('Failed to update user counts:', userUpdateError);
+      // Don't fail the delete if user update fails
+    }
 
     return res.json({
       success: true,

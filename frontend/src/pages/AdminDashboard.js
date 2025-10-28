@@ -121,7 +121,7 @@ const AdminDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch analytics data on component mount
+  // Fetch analytics data on component mount (access already verified by ProtectedRoute)
   useEffect(() => {
     const fetchAnalyticsData = async () => {
       try {
@@ -132,8 +132,12 @@ const AdminDashboard = () => {
         analytics.trackAction('admin_dashboard_visit', { page: 'admin-dashboard' });
         
         const data = await analytics.getAnalyticsData('7d');
+        console.log('📊 Analytics data received:', data);
         if (data && data.success) {
+          console.log('✅ Setting analytics data:', data.data);
           setAnalyticsData(data.data);
+        } else {
+          console.error('❌ Analytics data fetch failed or no data:', data);
         }
       } catch (error) {
         console.error('Failed to fetch analytics data:', error);
@@ -402,23 +406,10 @@ const AdminDashboard = () => {
         if (response.ok && data.success) {
           toast.success(`✅ User deleted! Notification email sent to ${userEmail}`);
           
-          // Remove user from both lists immediately
-          const updatedUsers = users.filter(user => user._id !== userId);
-          setUsers(updatedUsers);
-          setFilteredUsers(updatedUsers.filter(user => {
-            let match = true;
-            if (roleFilter) match = match && user.role === roleFilter;
-            if (userSearchQuery) {
-              match = match && (
-                user.fullName.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                user.email.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                user.businessName.toLowerCase().includes(userSearchQuery.toLowerCase())
-              );
-            }
-            return match;
-          }));
+          // Refetch users to update the list in real-time
+          await fetchUsers();
           
-          console.log('✅ User removed from list');
+          console.log('✅ User list refreshed');
         } else {
           toast.error(data.message || 'Failed to delete user');
         }

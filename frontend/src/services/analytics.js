@@ -153,11 +153,20 @@ class AnalyticsService {
         console.log(`📅 Fetching analytics data for specific date: ${specificDate}`);
       }
       
-      const response = await fetch(url);
+      // Add Authorization header for admin-protected endpoint
+      const token = localStorage.getItem('token');
+      const headers = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(url, { headers });
       if (response.ok) {
         const data = await response.json();
         console.log(`📊 Analytics data fetched:`, data);
         return data;
+      } else {
+        console.error(`❌ Analytics fetch failed with status: ${response.status}`);
       }
     } catch (error) {
       console.error('Failed to fetch analytics data:', error);
@@ -169,7 +178,15 @@ class AnalyticsService {
   async getUserMetrics() {
     try {
       const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${API_BASE_URL}/analytics/users`);
+      
+      // Add Authorization header for admin-protected endpoint
+      const token = localStorage.getItem('token');
+      const headers = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/analytics/users`, { headers });
       if (response.ok) {
         return await response.json();
       }

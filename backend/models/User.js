@@ -23,6 +23,15 @@ const userSchema = new mongoose.Schema({
     required: true, 
     trim: true 
   },
+  // Dataset and analytics tracking
+  datasetCount: { 
+    type: Number, 
+    default: 0 
+  },
+  chartsGenerated: {
+    type: Number,
+    default: 0
+  },
   resetPasswordToken: { type: String, default: null },
   resetPasswordExpires: { type: Date, default: null },
   // Email change verification fields

@@ -91,10 +91,12 @@ export const loginUser = async (req, res) => {
     }
 
     // ✅ Sign JWT with the session role (not database role)
+    // Admin sessions last 24 hours, regular users 1 hour
+    const tokenExpiration = sessionRole === "admin" ? "24h" : "1h";
     const token = jwt.sign(
       { id: user._id, role: sessionRole },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: tokenExpiration }
     );
 
     return res.json({

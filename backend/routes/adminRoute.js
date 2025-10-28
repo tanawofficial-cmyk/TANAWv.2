@@ -8,12 +8,13 @@ import {
   getAllFeedback,
   deleteFeedback,
 } from "../controllers/adminController.js";
-import { authMiddleware } from "../middleware/authMiddleware.js";
+import { authMiddleware, authorizeAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Apply authentication middleware to all admin routes
+// Apply authentication AND admin authorization middleware to all admin routes
 router.use(authMiddleware);
+router.use(authorizeAdmin);
 
 /**
  * ===========================

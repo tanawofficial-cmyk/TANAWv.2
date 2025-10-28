@@ -69,6 +69,10 @@ const LoginForm = () => {
       });
 
       if (res.success) {
+        // Clear any existing session data before storing new token
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("role");
         localStorage.setItem("token", res.data.token);
         setErrorMessage("");
         toast.success(res.message || "Login successful! Redirecting...", {
