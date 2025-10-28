@@ -19,6 +19,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  AlertTriangle,
   Zap,
   HardDrive,
   Cpu,
@@ -81,6 +82,26 @@ const AdminDashboard = () => {
   const [ratingFilter, setRatingFilter] = useState('');
   const [feedbackSearchQuery, setFeedbackSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  
+  // Shared feedback date filter for both Chart and General feedback
+  const [feedbackDateFilter, setFeedbackDateFilter] = useState('');
+  
+  // Chart Feedback state (NEW)
+  const [feedbackSubTab, setFeedbackSubTab] = useState('chart'); // 'chart' or 'general'
+  const [chartFeedbackData, setChartFeedbackData] = useState([]);
+  const [chartFeedbackLoading, setChartFeedbackLoading] = useState(false);
+  const [chartFeedbackStats, setChartFeedbackStats] = useState({
+    total: 0,
+    avgRating: 0,
+    mismatchRate: 0,
+    sentimentDistribution: { positive: 0, neutral: 0, negative: 0 }
+  });
+  const [chartFeedbackFilters, setChartFeedbackFilters] = useState({
+    sentiment: '',
+    mismatchOnly: false,
+    rating: '',
+    search: ''
+  });
   
   // Connectivity & Usage state
   const [systemStatus, setSystemStatus] = useState({
@@ -204,10 +225,22 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (activeTab === 'userFeedback') {
       console.log('💬 Active tab changed to userFeedback, fetching feedback...');
-      fetchFeedback();
+      if (feedbackSubTab === 'chart') {
+        fetchChartFeedback();
+      } else {
+        fetchFeedback();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, feedbackSubTab]);
+
+  // Refetch chart feedback when filters change
+  useEffect(() => {
+    if (activeTab === 'userFeedback' && feedbackSubTab === 'chart') {
+      fetchChartFeedback();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartFeedbackFilters, feedbackDateFilter]);
 
   // Filter feedback based on rating, date, and search
   useEffect(() => {
@@ -218,21 +251,13 @@ const AdminDashboard = () => {
       filtered = filtered.filter(f => f.rating === parseInt(ratingFilter));
     }
 
-    // Filter by date
-    if (dateFilter) {
-      const now = new Date();
-      if (dateFilter === 'today') {
-        filtered = filtered.filter(f => {
-          const feedbackDate = new Date(f.date);
-          return feedbackDate.toDateString() === now.toDateString();
-        });
-      } else if (dateFilter === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(f => new Date(f.date) >= weekAgo);
-      } else if (dateFilter === 'month') {
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(f => new Date(f.date) >= monthAgo);
-      }
+    // Filter by specific date (shared with chart feedback)
+    if (feedbackDateFilter) {
+      filtered = filtered.filter(f => {
+        const feedbackDate = new Date(f.date);
+        const filterDate = new Date(feedbackDateFilter);
+        return feedbackDate.toDateString() === filterDate.toDateString();
+      });
     }
 
     // Search in message or user details
@@ -246,7 +271,7 @@ const AdminDashboard = () => {
     }
 
     setFilteredFeedback(filtered);
-  }, [feedbackData, ratingFilter, dateFilter, feedbackSearchQuery]);
+  }, [feedbackData, ratingFilter, dateFilter, feedbackSearchQuery, feedbackDateFilter]);
 
   // Fetch connectivity data when tab changes
   useEffect(() => {
@@ -269,8 +294,9 @@ const AdminDashboard = () => {
   // Refetch API metrics when connectivity date filter changes
   useEffect(() => {
     if (activeTab === 'connectivity' && connectivityDateFilter) {
-      fetchApiMetrics('7d', connectivityDateFilter); // Pass date as second parameter
-      fetchDatabaseStats(connectivityDateFilter); // Also filter database stats
+      console.log('📅 Fetching connectivity data for date:', connectivityDateFilter);
+      fetchApiMetrics('7d', connectivityDateFilter);
+      fetchDatabaseStats(connectivityDateFilter);
     } else if (activeTab === 'connectivity' && !connectivityDateFilter) {
       fetchApiMetrics('7d'); // Default to 7 days when no filter
       fetchDatabaseStats(); // Fetch all time database stats
@@ -284,7 +310,7 @@ const AdminDashboard = () => {
       const fetchFilteredAnalytics = async () => {
         try {
           setLoading(true);
-          // Fetch data for specific date (you may need to modify backend to support this)
+          console.log('📅 Fetching analytics for date:', overviewDateFilter);
           const data = await analytics.getAnalyticsData('7d', overviewDateFilter);
           if (data && data.success) {
             setAnalyticsData(data.data);
@@ -457,6 +483,43 @@ const AdminDashboard = () => {
     }
   };
 
+  // Fetch chart feedback (NEW)
+  const fetchChartFeedback = async () => {
+    try {
+      setChartFeedbackLoading(true);
+      console.log('📊 Fetching chart feedback from API...');
+      
+      // Build params - only include non-empty values
+      const params = {};
+      if (chartFeedbackFilters.sentiment) params.sentiment = chartFeedbackFilters.sentiment;
+      if (chartFeedbackFilters.rating) params.rating = chartFeedbackFilters.rating;
+      if (chartFeedbackFilters.mismatchOnly) params.mismatchOnly = 'true';
+      if (chartFeedbackFilters.search) params.search = chartFeedbackFilters.search;
+      // Use same date for both start and end to filter by specific date
+      if (feedbackDateFilter) {
+        params.startDate = feedbackDateFilter;
+        params.endDate = feedbackDateFilter;
+      }
+      
+      const response = await api.get("/feedback/admin/all", { params });
+      
+      console.log('📊 Chart Feedback API Response:', response);
+      
+      if (response && response.success) {
+        const feedback = response.data || [];
+        console.log('✅ Chart feedback fetched successfully:', feedback.length, 'entries');
+        setChartFeedbackData(feedback);
+        
+        // Calculate sentiment stats
+        calculateChartFeedbackStats(feedback);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching chart feedback:', error);
+    } finally {
+      setChartFeedbackLoading(false);
+    }
+  };
+
   // Calculate feedback statistics
   const calculateFeedbackStats = (feedback) => {
     if (feedback.length === 0) {
@@ -495,6 +558,38 @@ const AdminDashboard = () => {
       totalFeedback: feedback.length,
       responseRate: responseRate.toFixed(1),
       trend: trend.toFixed(1)
+    });
+  };
+
+  // Calculate chart feedback statistics (NEW)
+  const calculateChartFeedbackStats = (feedback) => {
+    if (feedback.length === 0) {
+      setChartFeedbackStats({
+        total: 0,
+        avgRating: 0,
+        mismatchRate: 0,
+        sentimentDistribution: { positive: 0, neutral: 0, negative: 0 }
+      });
+      return;
+    }
+
+    // Calculate average rating
+    const avgRating = (feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length).toFixed(1);
+
+    // Calculate mismatch rate
+    const mismatchCount = feedback.filter(f => f.mismatchDetected).length;
+    const mismatchRate = ((mismatchCount / feedback.length) * 100).toFixed(1);
+
+    // Calculate sentiment distribution
+    const positive = feedback.filter(f => f.sentiment === 'positive').length;
+    const neutral = feedback.filter(f => f.sentiment === 'neutral').length;
+    const negative = feedback.filter(f => f.sentiment === 'negative').length;
+
+    setChartFeedbackStats({
+      total: feedback.length,
+      avgRating,
+      mismatchRate,
+      sentimentDistribution: { positive, neutral, negative }
     });
   };
 
@@ -632,24 +727,32 @@ const AdminDashboard = () => {
   const renderOverview = () => (
     <div className="space-y-6">
       {/* Date Filter for Overview */}
-      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-4">
-        <div className="flex items-center gap-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 relative z-50">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 relative z-50">
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <label className="text-sm font-medium text-gray-700">Filter Overview Data:</label>
+            <label className="text-sm font-medium text-blue-900">Filter by Date:</label>
           </div>
           <input
             type="date"
             value={overviewDateFilter}
-            onChange={(e) => setOverviewDateFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            onChange={(e) => {
+              console.log('📅 Overview date changed:', e.target.value);
+              setOverviewDateFilter(e.target.value);
+            }}
+            className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm relative z-50"
+            style={{ pointerEvents: 'auto' }}
           />
           {overviewDateFilter && (
             <button
-              onClick={() => setOverviewDateFilter('')}
-              className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm flex items-center gap-2"
+              onClick={() => {
+                console.log('🔄 Clearing overview date filter');
+                setOverviewDateFilter('');
+              }}
+              className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium flex items-center gap-2 relative z-50"
+              style={{ pointerEvents: 'auto' }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -657,7 +760,7 @@ const AdminDashboard = () => {
               Clear
             </button>
           )}
-          <span className="text-xs text-gray-500 ml-auto">
+          <span className="text-xs text-blue-700 ml-auto">
             {overviewDateFilter ? `Showing data for: ${new Date(overviewDateFilter).toLocaleDateString()}` : 'Showing all time data'}
           </span>
         </div>
@@ -816,6 +919,460 @@ const AdminDashboard = () => {
 
     return (
     <div className="space-y-6">
+      {/* Sub-Tabs for Chart Feedback vs General Feedback (NEW) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 relative z-50">
+        <div className="flex gap-2 relative z-50">
+          <button
+            onClick={() => {
+              console.log('🔄 Switching to Chart Feedback tab');
+              setFeedbackSubTab('chart');
+            }}
+            className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all relative z-50 ${
+              feedbackSubTab === 'chart'
+                ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Chart Feedback
+              {chartFeedbackStats.total > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm">
+                  {chartFeedbackStats.total}
+                </span>
+              )}
+            </div>
+          </button>
+          <button
+            onClick={() => {
+              console.log('🔄 Switching to General Feedback tab');
+              setFeedbackSubTab('general');
+            }}
+            className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all relative z-50 ${
+              feedbackSubTab === 'general'
+                ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              General Feedback
+              {feedbackStats.totalFeedback > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm">
+                  {feedbackStats.totalFeedback}
+                </span>
+              )}
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Render Chart Feedback or General Feedback based on active sub-tab */}
+      {feedbackSubTab === 'chart' ? (
+        <div className="space-y-6">
+          {/* Chart Feedback Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Total Feedback Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg border border-blue-200 p-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-blue-900">Total Feedback</p>
+                <div className="p-3 bg-blue-600 rounded-xl">
+                  <MessageSquare className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <p className="text-3xl font-bold text-blue-900">{chartFeedbackStats.total}</p>
+              <p className="text-sm text-blue-700 mt-1">chart ratings</p>
+            </div>
+
+            {/* Average Rating Card */}
+            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl shadow-lg border border-yellow-200 p-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-yellow-900">Avg Rating</p>
+                <div className="p-3 bg-yellow-600 rounded-xl">
+                  <Star className="h-5 w-5 text-white fill-white" />
+                </div>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-bold text-yellow-900">{chartFeedbackStats.avgRating}</p>
+                <p className="text-lg text-yellow-700">/ 5.0</p>
+              </div>
+              <div className="flex gap-1 mt-2">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${
+                      i < Math.round(parseFloat(chartFeedbackStats.avgRating))
+                        ? 'text-yellow-500 fill-yellow-500'
+                        : 'text-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Mismatch Rate Card */}
+            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl shadow-lg border border-red-200 p-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-red-900">Mismatch Rate</p>
+                <div className="p-3 bg-red-600 rounded-xl">
+                  <AlertTriangle className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-bold text-red-900">{chartFeedbackStats.mismatchRate}%</p>
+              </div>
+              <p className="text-sm text-red-700 mt-1">rating/sentiment conflicts</p>
+            </div>
+
+            {/* Sentiment Distribution Card */}
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl shadow-lg border border-purple-200 p-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-purple-900">Sentiment</p>
+                <div className="p-3 bg-purple-600 rounded-xl">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-purple-900">🟢 Positive</span>
+                  <span className="font-bold text-purple-900">{chartFeedbackStats.sentimentDistribution.positive}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-purple-900">⚪ Neutral</span>
+                  <span className="font-bold text-purple-900">{chartFeedbackStats.sentimentDistribution.neutral}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-purple-900">🔴 Negative</span>
+                  <span className="font-bold text-purple-900">{chartFeedbackStats.sentimentDistribution.negative}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Chart Feedback Table */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden relative z-10">
+            <div className="p-6 border-b border-gray-200 relative z-20">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Chart Feedback with AI Sentiment Analysis
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {chartFeedbackData.length} feedback entries with sentiment analysis
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    console.log('🔽 Export button clicked!');
+                    // Export functionality
+                    const csvData = chartFeedbackData.map(f => [
+                      new Date(f.createdAt).toLocaleDateString(),
+                      f.userId?.fullName || 'Unknown',
+                      f.chartTitle,
+                      f.rating,
+                      f.sentiment,
+                      f.mismatchDetected ? 'Yes' : 'No',
+                      f.comment || ''
+                    ]);
+                    const headers = ['Date', 'User', 'Chart', 'Rating', 'Sentiment', 'Mismatch', 'Comment'];
+                    const csv = [headers, ...csvData].map(row => row.join(',')).join('\n');
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `chart-feedback-${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  disabled={chartFeedbackData.length === 0}
+                  className="relative z-30 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </button>
+              </div>
+
+              {/* Date Filter */}
+              <div className="mt-6 relative z-20">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <label className="text-sm font-medium text-blue-900">Filter by Date:</label>
+                    </div>
+                    <input
+                      type="date"
+                      value={feedbackDateFilter}
+                      onChange={(e) => {
+                        console.log('📅 Feedback date changed:', e.target.value);
+                        setFeedbackDateFilter(e.target.value);
+                      }}
+                      className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm relative z-20"
+                      style={{ pointerEvents: 'auto' }}
+                    />
+                    {feedbackDateFilter && (
+                      <button
+                        onClick={() => {
+                          console.log('🔄 Clearing feedback date filter');
+                          setFeedbackDateFilter('');
+                        }}
+                        className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium flex items-center gap-2 relative z-20"
+                        style={{ pointerEvents: 'auto' }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Clear
+                      </button>
+                    )}
+                    <span className="text-xs text-blue-700 ml-auto">
+                      {feedbackDateFilter ? `Showing: ${new Date(feedbackDateFilter).toLocaleDateString()}` : 'Showing all time'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="mt-4 relative z-20">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="relative z-20">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sentiment</label>
+                    <select
+                      value={chartFeedbackFilters.sentiment}
+                      onChange={(e) => {
+                        console.log('🔍 Sentiment filter changed:', e.target.value);
+                        setChartFeedbackFilters({ ...chartFeedbackFilters, sentiment: e.target.value });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 relative z-20"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      <option value="">All Sentiments</option>
+                      <option value="positive">🟢 Positive</option>
+                      <option value="neutral">⚪ Neutral</option>
+                      <option value="negative">🔴 Negative</option>
+                    </select>
+                  </div>
+                  <div className="relative z-20">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+                    <select
+                      value={chartFeedbackFilters.rating}
+                      onChange={(e) => {
+                        console.log('⭐ Rating filter changed:', e.target.value);
+                        setChartFeedbackFilters({ ...chartFeedbackFilters, rating: e.target.value });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 relative z-20"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      <option value="">All Ratings</option>
+                      <option value="5">5 Stars</option>
+                      <option value="4">4 Stars</option>
+                      <option value="3">3 Stars</option>
+                      <option value="2">2 Stars</option>
+                      <option value="1">1 Star</option>
+                    </select>
+                  </div>
+                  <div className="relative z-20">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mismatch Filter</label>
+                    <select
+                      value={chartFeedbackFilters.mismatchOnly ? 'true' : 'false'}
+                      onChange={(e) => {
+                        console.log('⚠️ Mismatch filter changed:', e.target.value);
+                        setChartFeedbackFilters({ ...chartFeedbackFilters, mismatchOnly: e.target.value === 'true' });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 relative z-20"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      <option value="false">All Feedback</option>
+                      <option value="true">⚠️ Mismatches Only</option>
+                    </select>
+                  </div>
+                  <div className="relative z-20">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                    <input
+                      type="text"
+                      placeholder="Search chart name..."
+                      value={chartFeedbackFilters.search}
+                      onChange={(e) => {
+                        console.log('🔍 Search filter changed:', e.target.value);
+                        setChartFeedbackFilters({ ...chartFeedbackFilters, search: e.target.value });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 relative z-20"
+                      style={{ pointerEvents: 'auto' }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Clear Filters Button */}
+                {(chartFeedbackFilters.sentiment || chartFeedbackFilters.rating || chartFeedbackFilters.mismatchOnly || chartFeedbackFilters.search || feedbackDateFilter) && (
+                  <div className="mt-4 flex justify-end relative z-20">
+                    <button
+                      onClick={() => {
+                        console.log('🔄 Clearing all chart feedback filters');
+                        setChartFeedbackFilters({
+                          sentiment: '',
+                          mismatchOnly: false,
+                          rating: '',
+                          search: ''
+                        });
+                        setFeedbackDateFilter('');
+                      }}
+                      className="relative z-20 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      Clear All Filters
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Feedback Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-purple-50 to-blue-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">User</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Chart</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Rating</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Sentiment</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Comment</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {chartFeedbackLoading ? (
+                    <tr>
+                      <td colSpan="7" className="px-4 py-8 text-center">
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                          <span className="ml-2 text-gray-600">Loading feedback...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : chartFeedbackData.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
+                        No chart feedback received yet
+                      </td>
+                    </tr>
+                  ) : (
+                    chartFeedbackData.map((feedback) => (
+                        <tr key={feedback._id} className="hover:bg-gray-50 transition">
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
+                                <span className="text-white font-semibold text-sm">
+                                  {feedback.userId?.fullName ? feedback.userId.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
+                                </span>
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{feedback.userId?.fullName || 'Unknown'}</div>
+                                <div className="text-sm text-gray-500">{feedback.userId?.email || 'N/A'}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="text-sm font-medium text-gray-900">{feedback.chartTitle}</div>
+                            <div className="text-xs text-gray-500">ID: {feedback.chartId}</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${
+                                    i < feedback.rating
+                                      ? 'text-yellow-400 fill-yellow-400'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">{feedback.rating}/5</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                  feedback.sentiment === 'positive'
+                                    ? 'bg-green-100 text-green-800'
+                                    : feedback.sentiment === 'negative'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {feedback.sentiment === 'positive' ? '🟢 Positive' : feedback.sentiment === 'negative' ? '🔴 Negative' : '⚪ Neutral'}
+                              </span>
+                              {feedback.mismatchDetected && (
+                                <span
+                                  className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium flex items-center gap-1"
+                                  title={`Mismatch: ${feedback.rating} stars but ${feedback.sentiment} comment`}
+                                >
+                                  <AlertTriangle className="h-3 w-3" />
+                                  Mismatch
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 max-w-xs">
+                            <div className="text-sm text-gray-900 truncate">
+                              {feedback.comment || <span className="text-gray-400 italic">No comment</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(feedback.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm">
+                            <button
+                              onClick={async () => {
+                                if (window.confirm('Delete this feedback?')) {
+                                  try {
+                                    await api.delete(`/feedback/chart/${feedback._id}`);
+                                    fetchChartFeedback();
+                                  } catch (error) {
+                                    console.error('Error deleting feedback:', error);
+                                  }
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-900 font-medium"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer */}
+            {chartFeedbackData.length > 0 && (
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                <div className="text-center text-sm text-gray-600">
+                  Showing <span className="font-medium text-purple-600">{chartFeedbackData.length}</span> feedback {chartFeedbackData.length === 1 ? 'entry' : 'entries'}
+                  {(chartFeedbackFilters.sentiment || chartFeedbackFilters.rating || chartFeedbackFilters.mismatchOnly || chartFeedbackFilters.search) && (
+                    <span className="ml-2 text-gray-500">(filtered)</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div>
         {/* AI Quality Analytics (NEW!) */}
         {aiAverages.count > 0 && (
           <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl shadow-lg border border-purple-200 p-6">
@@ -887,8 +1444,8 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Average Rating Card */}
           <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-6 hover:shadow-xl transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+            <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Average Rating</p>
                 <div className="relative">
@@ -921,8 +1478,8 @@ const AdminDashboard = () => {
       
           {/* Total Feedback Card */}
           <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-6 hover:shadow-xl transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+            <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Total Feedback</p>
                 <div className="relative">
@@ -941,8 +1498,8 @@ const AdminDashboard = () => {
         
           {/* Response Rate Card */}
           <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-6 hover:shadow-xl transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+            <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Response Rate</p>
                 <div className="relative">
@@ -963,8 +1520,8 @@ const AdminDashboard = () => {
 
           {/* Trend Card */}
           <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-6 hover:shadow-xl transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-pink-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-pink-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+            <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">7-Day Trend</p>
                 <div className="relative">
@@ -1046,46 +1603,97 @@ const AdminDashboard = () => {
               </button>
             </div>
 
+            {/* Date Filter */}
+            <div className="mt-6 relative z-20">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <label className="text-sm font-medium text-blue-900">Filter by Date:</label>
+                  </div>
+                  <input
+                    type="date"
+                    value={feedbackDateFilter}
+                    onChange={(e) => {
+                      console.log('📅 Feedback date changed:', e.target.value);
+                      setFeedbackDateFilter(e.target.value);
+                    }}
+                    className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm relative z-20"
+                    style={{ pointerEvents: 'auto' }}
+                  />
+                  {feedbackDateFilter && (
+                    <button
+                      onClick={() => {
+                        console.log('🔄 Clearing feedback date filter');
+                        setFeedbackDateFilter('');
+                      }}
+                      className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium flex items-center gap-2 relative z-20"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Clear
+                    </button>
+                  )}
+                  <span className="text-xs text-blue-700 ml-auto">
+                    {feedbackDateFilter ? `Showing: ${new Date(feedbackDateFilter).toLocaleDateString()}` : 'Showing all time'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Rating</label>
-                <select
-                  value={ratingFilter}
-                  onChange={(e) => setRatingFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Ratings</option>
-                  <option value="5">5 Stars</option>
-                  <option value="4">4 Stars</option>
-                  <option value="3">3 Stars</option>
-                  <option value="2">2 Stars</option>
-                  <option value="1">1 Star</option>
-                </select>
+            <div className="mt-4 relative z-20">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative z-20">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Rating</label>
+                  <select
+                    value={ratingFilter}
+                    onChange={(e) => setRatingFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 relative z-20"
+                    style={{ pointerEvents: 'auto' }}
+                  >
+                    <option value="">All Ratings</option>
+                    <option value="5">5 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="3">3 Stars</option>
+                    <option value="2">2 Stars</option>
+                    <option value="1">1 Star</option>
+                  </select>
+                </div>
+                <div className="relative z-20">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                  <input
+                    type="text"
+                    placeholder="Search feedback..."
+                    value={feedbackSearchQuery}
+                    onChange={(e) => setFeedbackSearchQuery(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 relative z-20"
+                    style={{ pointerEvents: 'auto' }}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Date</label>
-                <select
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                <input
-                  type="text"
-                  placeholder="Search feedback..."
-                  value={feedbackSearchQuery}
-                  onChange={(e) => setFeedbackSearchQuery(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              
+              {/* Clear All Filters Button */}
+              {(ratingFilter || feedbackSearchQuery || feedbackDateFilter) && (
+                <div className="mt-4 flex justify-end relative z-20">
+                  <button
+                    onClick={() => {
+                      console.log('🔄 Clearing all general feedback filters');
+                      setRatingFilter('');
+                      setFeedbackSearchQuery('');
+                      setFeedbackDateFilter('');
+                    }}
+                    className="relative z-20 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                    style={{ pointerEvents: 'auto' }}
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1301,6 +1909,8 @@ const AdminDashboard = () => {
             </div>
           )}
       </div>
+        </div>
+      )}
     </div>
   );
   };
@@ -1604,22 +2214,45 @@ const AdminDashboard = () => {
               <p className="text-sm text-gray-500 mt-1">Monitor API usage and system performance</p>
             </div>
             <div className="flex items-center gap-3">
-              {/* Date Picker (Replaced dropdown) */}
+              <button
+                onClick={exportUsageReport}
+                disabled={!apiMetrics.timeline || apiMetrics.timeline.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative z-20"
+                style={{ pointerEvents: 'auto' }}
+              >
+                <Download className="h-4 w-4" />
+                Export Report
+              </button>
+            </div>
+          </div>
+
+          {/* Date Filter */}
+          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 relative z-50">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 relative z-50">
               <div className="flex items-center gap-2">
                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <input
-                  type="date"
-                  value={connectivityDateFilter}
-                  onChange={(e) => setConnectivityDateFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
+                <label className="text-sm font-medium text-blue-900">Filter by Date:</label>
               </div>
+              <input
+                type="date"
+                value={connectivityDateFilter}
+                onChange={(e) => {
+                  console.log('📅 Connectivity date changed:', e.target.value);
+                  setConnectivityDateFilter(e.target.value);
+                }}
+                className="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm relative z-50"
+                style={{ pointerEvents: 'auto' }}
+              />
               {connectivityDateFilter && (
                 <button
-                  onClick={() => setConnectivityDateFilter('')}
-                  className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm flex items-center gap-2"
+                  onClick={() => {
+                    console.log('🔄 Clearing connectivity date filter');
+                    setConnectivityDateFilter('');
+                  }}
+                  className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium flex items-center gap-2 relative z-50"
+                  style={{ pointerEvents: 'auto' }}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1627,21 +2260,11 @@ const AdminDashboard = () => {
                   Clear
                 </button>
               )}
-              <button
-                onClick={exportUsageReport}
-                disabled={!apiMetrics.timeline || apiMetrics.timeline.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="h-4 w-4" />
-                Export Report
-              </button>
+              <span className="text-xs text-blue-700 ml-auto">
+                {connectivityDateFilter ? `Showing: ${new Date(connectivityDateFilter).toLocaleDateString()}` : 'Showing all time'}
+              </span>
             </div>
           </div>
-          {connectivityDateFilter && (
-            <div className="mt-3 text-xs text-gray-600 flex items-center gap-2">
-              <span className="text-blue-600 font-medium">📅 Showing data for: {new Date(connectivityDateFilter).toLocaleDateString()}</span>
-            </div>
-          )}
         </div>
 
         {/* API Endpoint Breakdown */}
@@ -1878,8 +2501,8 @@ const AdminDashboard = () => {
           {/* Header */}
           <div className="bg-white/90 backdrop-blur-lg border-b border-gray-200/50 px-4 md:px-6 py-4 md:py-5 shadow-sm relative">
             {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-5">
-              <div className="absolute inset-0" style={{
+            <div className="absolute inset-0 opacity-5 pointer-events-none">
+              <div className="absolute inset-0 pointer-events-none" style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Cpath d='M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z'/%3E%3C/g%3E%3C/svg%3E")`,
                 backgroundSize: '30px 30px'
               }}></div>

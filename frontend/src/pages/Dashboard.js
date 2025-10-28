@@ -6,6 +6,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
 import StickyHeader from "../components/StickyHeader";
 import FeedbackModal from "../components/FeedbackModal";
+import ChartFeedbackModal from "../components/ChartFeedbackModal";
 import html2canvas from 'html2canvas';
 
 
@@ -38,6 +39,10 @@ const UserDashboard = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [datasetToDelete, setDatasetToDelete] = useState(null);
+  
+  // 💬 Chart feedback modal state
+  const [showChartFeedbackModal, setShowChartFeedbackModal] = useState(false);
+  const [selectedChartForFeedback, setSelectedChartForFeedback] = useState(null);
   
   // 🔄 Loading states to prevent duplicate calls
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -654,6 +659,24 @@ const UserDashboard = () => {
     setTimeout(() => {
       window.location.replace("/");
     }, 1000); // Delay to show the toast
+  };
+
+  // 💬 Open chart feedback modal
+  const openChartFeedbackModal = (chart) => {
+    setSelectedChartForFeedback(chart);
+    setShowChartFeedbackModal(true);
+  };
+
+  // 💬 Close chart feedback modal
+  const closeChartFeedbackModal = () => {
+    setShowChartFeedbackModal(false);
+    setSelectedChartForFeedback(null);
+  };
+
+  // 💬 Handle chart feedback submitted
+  const handleChartFeedbackSubmitted = (feedbackData) => {
+    console.log("✅ Chart feedback submitted:", feedbackData);
+    // Could update UI or refresh feedback list here
   };
 
   // 📥 Download Handlers
@@ -2195,15 +2218,28 @@ const UserDashboard = () => {
                                   <p className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1 line-clamp-2">{chart.description || 'Analytics visualization'}</p>
                                 </div>
                               </div>
-                              <button
-                                onClick={() => handleDownloadChartImage(index)}
-                                className="flex-shrink-0 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-                                title="Download chart as image"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                              </button>
+                              <div className="flex items-center gap-2">
+                                {/* Feedback Button */}
+                                <button
+                                  onClick={() => openChartFeedbackModal(chart)}
+                                  className="flex-shrink-0 p-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                                  title="Rate this chart"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                  </svg>
+                                </button>
+                                {/* Download Button */}
+                                <button
+                                  onClick={() => handleDownloadChartImage(index)}
+                                  className="flex-shrink-0 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                                  title="Download chart as image"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                </button>
+                              </div>
                         </div>
                         
                         {/* Brief Description - User-Friendly Explanation */}
@@ -2868,6 +2904,15 @@ const UserDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Chart Feedback Modal */}
+      <ChartFeedbackModal
+        isOpen={showChartFeedbackModal}
+        onClose={closeChartFeedbackModal}
+        chart={selectedChartForFeedback}
+        datasetId={selectedDatasetId}
+        onFeedbackSubmitted={handleChartFeedbackSubmitted}
+      />
 
       {/* Back to Top Button */}
       {showBackToTop && (

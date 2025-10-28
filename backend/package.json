@@ -22,6 +22,7 @@
     "mongoose": "^8.19.0",
     "multer": "^2.0.2",
     "nodemailer": "^6.10.1",
+    "openai": "^4.77.0",
     "react-heatmap-grid": "^0.9.1",
     "resend": "^4.0.1",
     "xlsx": "^0.18.5"
