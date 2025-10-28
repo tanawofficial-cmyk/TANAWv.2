@@ -1,5 +1,5 @@
 //Dashboard.js 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import api, { setSessionExpiredCallback } from "../api";
 import analytics from "../services/analytics";
 import toast, { Toaster } from "react-hot-toast";
@@ -22,6 +22,14 @@ const UserDashboard = () => {
   const [selectedDatasetId, setSelectedDatasetId] = useState(null); // Selected dataset for viewing
   const [selectedDatasetData, setSelectedDatasetData] = useState(null); // Full data of selected dataset
   const [charts, setCharts] = useState([]); // Store fetched charts
+  
+  // 📊 Sorting state
+  const [sortBy, setSortBy] = useState('date'); // 'date', 'name', 'size'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+  
+  // 📄 Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   
   // 🔒 Session expiration state
   const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
@@ -80,18 +88,45 @@ const UserDashboard = () => {
     window.location.href = "/login";
   };
 
-  // ✅ Load user info and datasets
-  useEffect(() => {
+  // 🔒 Verify user session and role (wrapped in useCallback for cross-tab detection)
+  const verifyUserSession = useCallback(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    const storedRole = localStorage.getItem("role");
+    
+    console.log("🔍 Verifying user session...", { tokenExists: !!token, storedRole });
+    
+    if (!token) {
+      console.log("❌ No token found, redirecting to login");
+      return;
+    }
+    
+    // CRITICAL: Check if stored role is admin - if so, redirect immediately
+    if (storedRole === "admin") {
+      console.log("⚠️ Admin role detected in user dashboard! Clearing session and redirecting...");
+      localStorage.clear();
+      toast.error("Admin accounts cannot access the user dashboard. Please use the admin dashboard.");
+      window.location.replace("/admin-login");
+      return;
+    }
     
     // Track page view and user activity
     analytics.trackPageView('user-dashboard');
     analytics.trackAction('dashboard_visit', { page: 'user-dashboard' });
     
-    // Load user profile
+    // Load user profile from API
     api.get("/users/me", { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
+        console.log("✅ User profile loaded:", { email: res.email, role: res.role });
+        
+        // CRITICAL: Double-check role from API response
+        if (res.role === "admin") {
+          console.log("⚠️ API returned admin role! Clearing session and redirecting...");
+          localStorage.clear();
+          toast.error("Admin accounts cannot access the user dashboard. Please use the admin dashboard.");
+          window.location.replace("/admin-login");
+          return;
+        }
+        
         setUser(res);
         // Set the user ID in analytics service for proper tracking
         if (res.id || res._id) {
@@ -105,6 +140,11 @@ const UserDashboard = () => {
         console.error("Failed to load user profile:", error);
         toast.error("Failed to load user profile");
       });
+  }, []);
+
+  // ✅ Load user info and datasets on mount
+  useEffect(() => {
+    verifyUserSession();
     
     // Track periodic activity to keep user "active"
     const activityInterval = setInterval(() => {
@@ -115,7 +155,36 @@ const UserDashboard = () => {
     }, 5 * 60 * 1000); // Every 5 minutes
     
     return () => clearInterval(activityInterval);
-  }, []);
+  }, [verifyUserSession]);
+
+  // 🔄 Listen for localStorage changes from other tabs (cross-tab session detection)
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      // Detect if token, user, or role changed in another tab
+      if (event.key === 'token' || event.key === 'user' || event.key === 'role') {
+        console.log("⚠️ localStorage changed in another tab:", event.key, "- Re-verifying session...");
+        
+        // Give a small delay to ensure localStorage is fully updated
+        setTimeout(() => {
+          verifyUserSession();
+        }, 100);
+      }
+      
+      // If storage was completely cleared in another tab
+      if (event.key === null) {
+        console.log("⚠️ localStorage cleared in another tab - Redirecting to login...");
+        window.location.replace("/login");
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    console.log("👂 Cross-tab storage listener activated");
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      console.log("👋 Cross-tab storage listener deactivated");
+    };
+  }, [verifyUserSession]);
 
   // 📂 Load user's datasets from backend
   const loadUserDatasets = async () => {
@@ -201,6 +270,11 @@ const UserDashboard = () => {
       setShowSessionExpiredModal(true);
     });
   }, []);
+
+  // 📄 Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateFilter, sortBy, sortOrder]);
 
   // 🔝 Back to top scroll listener
   useEffect(() => {
@@ -568,13 +642,17 @@ const UserDashboard = () => {
   // 🚪 Handle Logout
   const handleLogout = () => {
     setShowLogoutModal(false); // Close modal
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("role");
+    
+    console.log("🚪 Logging out user...");
+    
+    // Clear ALL localStorage to prevent session contamination
+    localStorage.clear();
+    
     toast.success("👋 Logged out successfully! Redirecting to home...");
-    // Redirect to landing page
+    
+    // Redirect to landing page with full page reload
     setTimeout(() => {
-      window.location.href = "/";
+      window.location.replace("/");
     }, 1000); // Delay to show the toast
   };
 
@@ -1553,18 +1631,73 @@ const UserDashboard = () => {
   const renderDatasetHistory = () => {
     if (datasets.length === 0) return null;
     
-    // Sort filtered datasets by upload date (newest first)
-    const sortedAndFilteredDatasets = [...filteredDatasets].sort((a, b) => 
-      b.uploadDate - a.uploadDate
-    );
+    // Sort filtered datasets based on selected criteria
+    const sortedAndFilteredDatasets = [...filteredDatasets].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'date':
+          comparison = new Date(b.uploadDate) - new Date(a.uploadDate);
+          break;
+        case 'name':
+          comparison = (a.name || '').localeCompare(b.name || '');
+          break;
+        case 'size':
+          comparison = (b.rowCount || 0) - (a.rowCount || 0);
+          break;
+        default:
+          comparison = new Date(b.uploadDate) - new Date(a.uploadDate);
+      }
+      
+      // Reverse if ascending order
+      return sortOrder === 'asc' ? -comparison : comparison;
+    });
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(sortedAndFilteredDatasets.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedDatasets = sortedAndFilteredDatasets.slice(startIndex, endIndex);
     
     return (
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-3">
           <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
           📁 Dataset History
+          <span className="text-sm font-normal text-gray-500">({sortedAndFilteredDatasets.length})</span>
         </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Sort By Dropdown */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 hidden sm:inline">Sort by:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-1.5 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              >
+                <option value="date">📅 Date</option>
+                <option value="name">📝 Name</option>
+                <option value="size">📊 Size (Rows)</option>
+              </select>
+            </div>
+            
+            {/* Sort Order Toggle */}
+            <button
+              onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors bg-white"
+              title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {sortOrder === 'asc' ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                )}
+              </svg>
+              <span className="hidden sm:inline">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+            </button>
+            
+            {/* Refresh Button */}
             <button
               onClick={refreshDatasets}
               disabled={isRefreshing}
@@ -1580,8 +1713,8 @@ const UserDashboard = () => {
         </div>
         
         <div className="space-y-4">
-          {sortedAndFilteredDatasets.length > 0 ? (
-            sortedAndFilteredDatasets.map((dataset) => (
+          {paginatedDatasets.length > 0 ? (
+            paginatedDatasets.map((dataset) => (
             <div key={dataset.id} className="space-y-3">
               {/* Dataset Card - Responsive */}
               <div
@@ -2289,43 +2422,164 @@ const UserDashboard = () => {
                           </div>
           ))
           ) : (
-            <div className="text-center py-8">
-              <div className="flex flex-col items-center justify-center space-y-3">
-                <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-gray-500 text-lg font-medium">No datasets found</p>
-                <p className="text-gray-400 text-sm">
-                  {(searchTerm || dateFilter)
-                    ? (
-                      <>
-                        No datasets match your filters
-                        {searchTerm && ` "${searchTerm}"`}
-                        {searchTerm && dateFilter && " and "}
-                        {dateFilter && ` on ${new Date(dateFilter).toLocaleDateString()}`}.
-                        <br />
-                        Try adjusting your search or filters.
-                      </>
-                    )
-                    : datasets.length === 0
-                      ? "Upload a dataset to get started with analytics."
-                      : "No datasets available."}
-                </p>
-                {(searchTerm || dateFilter) && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 sm:p-12">
+              {(searchTerm || dateFilter) ? (
+                // Empty state due to filters
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-50 rounded-full mb-4">
+                    <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">No matching datasets</h3>
+                  <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                    No datasets match your current filters
+                    {searchTerm && <span className="font-medium text-blue-600"> "{searchTerm}"</span>}
+                    {searchTerm && dateFilter && " and "}
+                    {dateFilter && <span className="font-medium text-blue-600"> {new Date(dateFilter).toLocaleDateString()}</span>}.
+                  </p>
                   <button
                     onClick={() => {
                       setSearchTerm("");
                       setDateFilter("");
                     }}
-                    className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg font-medium"
                   >
-                    Clear All Filters
+                    🔄 Clear All Filters
                   </button>
-                )}
-              </div>
+                </div>
+              ) : datasets.length === 0 ? (
+                // Empty state for new users (no datasets uploaded yet)
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full mb-6">
+                    <svg className="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3">Welcome to TANAW Analytics! 🎉</h3>
+                  <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+                    Get started by uploading your first dataset. We'll automatically analyze your data and generate insightful visualizations.
+                  </p>
+                  
+                  {/* Quick Start Tips */}
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6 max-w-2xl mx-auto border border-blue-100">
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2">
+                      <span>💡</span> Quick Start Guide
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+                      <div className="bg-white rounded-lg p-4 shadow-sm">
+                        <div className="text-2xl mb-2">📤</div>
+                        <h5 className="font-semibold text-sm text-gray-800 mb-1">1. Upload Data</h5>
+                        <p className="text-xs text-gray-600">Upload your Excel or CSV file using the form above</p>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 shadow-sm">
+                        <div className="text-2xl mb-2">🤖</div>
+                        <h5 className="font-semibold text-sm text-gray-800 mb-1">2. AI Analysis</h5>
+                        <p className="text-xs text-gray-600">Our AI automatically detects patterns and insights</p>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 shadow-sm">
+                        <div className="text-2xl mb-2">📊</div>
+                        <h5 className="font-semibold text-sm text-gray-800 mb-1">3. View Charts</h5>
+                        <p className="text-xs text-gray-600">Explore interactive charts and analytics</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Supported File Formats */}
+                  <div className="text-sm text-gray-500 mb-6">
+                    <p className="mb-2">📁 Supported formats: Excel (.xlsx, .xls) and CSV (.csv)</p>
+                    <p>💾 Maximum file size: 10 MB</p>
+                  </div>
+
+                  <button
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl font-medium"
+                  >
+                    📤 Upload Your First Dataset
+                  </button>
+                </div>
+              ) : (
+                // Empty state (shouldn't normally reach here)
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500 text-lg font-medium">No datasets available</p>
+                  <p className="text-gray-400 text-sm mt-2">Something unexpected happened. Try refreshing the page.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
+        
+        {/* Pagination Controls */}
+        {sortedAndFilteredDatasets.length > itemsPerPage && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-lg p-4 border border-gray-200">
+            <div className="text-sm text-gray-600">
+              Showing <span className="font-semibold text-gray-800">{startIndex + 1}</span> to{' '}
+              <span className="font-semibold text-gray-800">{Math.min(endIndex, sortedAndFilteredDatasets.length)}</span> of{' '}
+              <span className="font-semibold text-gray-800">{sortedAndFilteredDatasets.length}</span> datasets
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Previous Button */}
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Previous page"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition ${
+                        currentPage === pageNum
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Next Button */}
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Next page"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };

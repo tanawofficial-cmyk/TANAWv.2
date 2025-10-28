@@ -48,6 +48,8 @@ const AdminDashboard = () => {
   const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [userCurrentPage, setUserCurrentPage] = useState(1);
+  const [userItemsPerPage] = useState(15);
   const [overviewDateFilter, setOverviewDateFilter] = useState('');
   const [connectivityDateFilter, setConnectivityDateFilter] = useState('');
   const [analyticsData, setAnalyticsData] = useState({
@@ -156,6 +158,11 @@ const AdminDashboard = () => {
       fetchUsers();
     }
   }, [activeTab]);
+
+  // Reset user pagination when filters change
+  useEffect(() => {
+    setUserCurrentPage(1);
+  }, [roleFilter, userSearchQuery, userDateFilter]);
 
   // Filter users based on search and filters
   useEffect(() => {
@@ -324,12 +331,17 @@ const AdminDashboard = () => {
   // Helper functions
   const handleLogout = () => {
     setShowLogoutModal(false); // Close modal
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    
+    console.log("🚪 Logging out admin...");
+    
+    // Clear ALL localStorage to prevent session contamination
+    localStorage.clear();
+    
     toast.success("👋 Admin logged out successfully! Redirecting to home...");
-    // Redirect to landing page
+    
+    // Redirect to landing page with full page reload
     setTimeout(() => {
-      window.location.href = '/';
+      window.location.replace('/');
     }, 1000); // Delay to show the toast
   };
 
@@ -2008,12 +2020,45 @@ const AdminDashboard = () => {
                               </tr>
                             ) : filteredUsers.length === 0 ? (
                               <tr>
-                                <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
-                                  No TANAW users found
+                                <td colSpan="6" className="px-4 py-12">
+                                  <div className="text-center">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
+                                      <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                      </svg>
+                                    </div>
+                                    <p className="text-gray-700 font-semibold text-lg mb-2">
+                                      {(roleFilter || userSearchQuery || userDateFilter) ? "No matching users" : "No users registered yet"}
+                                    </p>
+                                    <p className="text-gray-500 text-sm mb-4">
+                                      {(roleFilter || userSearchQuery || userDateFilter)
+                                        ? "Try adjusting your filters to see more results"
+                                        : "Users will appear here once they register on TANAW"}
+                                    </p>
+                                    {(roleFilter || userSearchQuery || userDateFilter) && (
+                                      <button
+                                        onClick={() => {
+                                          setRoleFilter('');
+                                          setUserSearchQuery('');
+                                          setUserDateFilter('');
+                                        }}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+                                      >
+                                        Clear Filters
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ) : (
-                              filteredUsers.map((user) => (
+                              (() => {
+                                // Calculate pagination for users
+                                const userTotalPages = Math.ceil(filteredUsers.length / userItemsPerPage);
+                                const userStartIndex = (userCurrentPage - 1) * userItemsPerPage;
+                                const userEndIndex = userStartIndex + userItemsPerPage;
+                                const paginatedUsers = filteredUsers.slice(userStartIndex, userEndIndex);
+                                
+                                return paginatedUsers.map((user) => (
                                 <tr key={user._id} className="hover:bg-gray-50 transition-all duration-200 hover:shadow-sm">
                                   <td className="px-3 py-4">
                                     <div className="flex items-center">
@@ -2111,11 +2156,75 @@ const AdminDashboard = () => {
                                     </div>
                                   </td>
                                 </tr>
-                              ))
+                              ));
+                              })()
                             )}
                           </tbody>
                         </table>
                       </div>
+
+                      {/* Pagination Controls */}
+                      {filteredUsers.length > userItemsPerPage && (
+                        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+                          <div className="text-sm text-gray-700">
+                            Showing <span className="font-semibold text-blue-700">{((userCurrentPage - 1) * userItemsPerPage) + 1}</span> to{' '}
+                            <span className="font-semibold text-blue-700">{Math.min(userCurrentPage * userItemsPerPage, filteredUsers.length)}</span> of{' '}
+                            <span className="font-semibold text-blue-700">{filteredUsers.length}</span> users
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setUserCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={userCurrentPage === 1}
+                              className="px-3 py-2 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: Math.min(Math.ceil(filteredUsers.length / userItemsPerPage), 5) }, (_, i) => {
+                                let pageNum;
+                                const totalPages = Math.ceil(filteredUsers.length / userItemsPerPage);
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (userCurrentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (userCurrentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = userCurrentPage - 2 + i;
+                                }
+                                
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    onClick={() => setUserCurrentPage(pageNum)}
+                                    className={`w-8 h-8 rounded-lg text-sm font-medium transition ${
+                                      userCurrentPage === pageNum
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'border border-gray-300 bg-white hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            
+                            <button
+                              onClick={() => setUserCurrentPage(prev => Math.min(Math.ceil(filteredUsers.length / userItemsPerPage), prev + 1))}
+                              disabled={userCurrentPage === Math.ceil(filteredUsers.length / userItemsPerPage)}
+                              className="px-3 py-2 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* TANAW User Summary */}
                       <div className="relative z-10 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mt-6">

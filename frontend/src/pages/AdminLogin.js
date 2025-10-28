@@ -45,15 +45,19 @@ const AdminLoginForm = () => {
       });
 
       if (res.success && res.data.role === "admin") {
-        // Clear any existing session data before storing new admin session
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        localStorage.removeItem("role");
+        // 🔒 CRITICAL: Clear ALL session data before storing new admin session
+        localStorage.clear(); // Nuclear option - clear everything to prevent contamination
         
-        // Set new admin session
+        // Store ONLY the new admin session data
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
         localStorage.setItem("role", "admin");
+        
+        console.log("✅ Admin login successful:", {
+          email: res.data.user?.email,
+          role: res.data.role,
+          tokenPreview: res.data.token?.substring(0, 20) + "..."
+        });
         
         toast.success("Welcome back, Admin!", {
           duration: 2000,
@@ -61,7 +65,8 @@ const AdminLoginForm = () => {
         
         // Redirect to admin dashboard
         setTimeout(() => {
-          window.location.href = "/admin-dashboard";
+          // Force a full page reload to clear any cached state
+          window.location.replace("/admin-dashboard");
         }, 1500);
       }
     } catch (err) {

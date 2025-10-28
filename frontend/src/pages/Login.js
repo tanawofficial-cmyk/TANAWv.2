@@ -69,19 +69,30 @@ const LoginForm = () => {
       });
 
       if (res.success) {
-        // Clear any existing session data before storing new token
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        localStorage.removeItem("role");
+        // 🔒 CRITICAL: Clear ALL session data before storing new session
+        localStorage.clear(); // Nuclear option - clear everything to prevent contamination
+        
+        // Store ONLY the new user session data
         localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        localStorage.setItem("role", res.data.user?.role || "user");
+        
+        console.log("✅ Regular user login successful:", {
+          email: res.data.user?.email,
+          role: res.data.user?.role,
+          tokenPreview: res.data.token?.substring(0, 20) + "..."
+        });
+        
         setErrorMessage("");
         toast.success(res.message || "Login successful! Redirecting...", {
           duration: 2000,
           icon: "🎉",
         });
+        
         // Redirect after a short delay to show the success message
         setTimeout(() => {
-          window.location.href = "/userDashboard";
+          // Force a full page reload to clear any cached state
+          window.location.replace("/userDashboard");
         }, 1500);
       }
     } catch (err) {
