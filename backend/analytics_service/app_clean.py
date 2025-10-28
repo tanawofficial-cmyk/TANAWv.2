@@ -1967,6 +1967,9 @@ def analyze_clean():
     """
     Clean Architecture: OpenAI Column Mapping + TANAW Data Processing
     """
+    print("\n" + "="*100)
+    print("🚀🚀🚀 FLASK SERVICE RELOADED - NEW CODE VERSION 2025-10-28 🚀🚀🚀")
+    print("="*100 + "\n")
     print("🚀 TANAW Clean Architecture - OpenAI + TANAW Processing")
     
     try:

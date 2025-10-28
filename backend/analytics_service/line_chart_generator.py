@@ -867,22 +867,53 @@ class TANAWLineChartGenerator:
         # Try Sales Summary (Time Series) with safe wrapper (SALES charts)
         if context in ["SALES", "MIXED", "UNKNOWN"]:
             try:
+                print(f"🔍 Attempting to generate Sales Summary (Sales Over Time) chart...")
+                print(f"🔍 DataFrame columns: {df.columns.tolist()}")
+                print(f"🔍 Column mapping: {self.column_mapping}")
+                
                 sales_summary_check = self.can_generate_chart(df, "sales_summary")
-                print(f"🔍 Sales Summary check: {sales_summary_check}")
+                print(f"🔍 Sales Summary readiness check: {sales_summary_check}")
+                
                 if sales_summary_check["ready"] and len(sales_summary_check["available_columns"]) >= 2:
-                    date_col = sales_summary_check["available_columns"][0]  # First available date column
-                    value_col = sales_summary_check["available_columns"][1]   # First available value column
+                    # CRITICAL FIX: Deduplicate available columns to prevent using Date for both axes
+                    available_cols = sales_summary_check["available_columns"]
+                    unique_cols = []
+                    seen = set()
+                    for col in available_cols:
+                        if col not in seen:
+                            unique_cols.append(col)
+                            seen.add(col)
+                    
+                    print(f"🔧 Deduplicated columns: {available_cols} → {unique_cols}")
+                    
+                    if len(unique_cols) >= 2:
+                        date_col = unique_cols[0]  # First unique column (should be Date)
+                        value_col = unique_cols[1]  # Second unique column (should be Sales)
+                    else:
+                        # Fallback: try to find Date and Sales explicitly
+                        date_col = next((col for col in unique_cols if 'date' in col.lower()), unique_cols[0])
+                        value_col = next((col for col in unique_cols if col != date_col), None)
+                        
+                        if not value_col:
+                            print(f"❌ Could not find distinct date and value columns")
+                            raise ValueError("Need at least 2 distinct columns for line chart")
+                    
+                    print(f"🎯 Generating Sales Summary chart with date_col={date_col}, value_col={value_col}")
                     
                     chart = self.generate_sales_summary(df, date_col, value_col)
                     if chart:
                         charts.append(chart)
-                        print(f"✅ Generated Sales Summary chart")
+                        print(f"✅ Generated Sales Summary (Sales Over Time) chart successfully!")
                     else:
-                        print(f"❌ Sales Summary chart generation failed")
+                        print(f"❌ Sales Summary chart generation returned None")
                 else:
-                    print(f"⏭️ Sales Summary not available: {sales_summary_check.get('missing_columns', [])}")
+                    print(f"⏭️ Sales Summary not available - Missing: {sales_summary_check.get('missing_columns', [])}")
+                    print(f"   Ready status: {sales_summary_check.get('ready', False)}")
+                    print(f"   Available columns: {sales_summary_check.get('available_columns', [])}")
             except Exception as e:
-                print(f"❌ Error checking Sales Summary readiness: {e}")
+                print(f"❌ Error in Sales Summary generation: {e}")
+                import traceback
+                traceback.print_exc()
         else:
             print(f"⏭️ Skipping Sales Summary (context={context}, sales chart)")
         
