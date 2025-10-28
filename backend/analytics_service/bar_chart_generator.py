@@ -628,9 +628,9 @@ class TANAWBarChartGenerator:
                         
                         if any(candidate.lower() in col_lower or col_lower in candidate.lower() 
                            for candidate in region_candidates):
-                        location_col = col
+                            location_col = col
                             print(f"✅ Found location column via flexible search: {col}")
-                        break
+                            break
                 
                 if location_col:
                     available_cols.append(location_col)
