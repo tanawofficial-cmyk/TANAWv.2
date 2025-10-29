@@ -695,7 +695,12 @@ const AnalyticsDashboard = ({ analysisId, analysisData, onRefresh, onExport, onS
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Business Insights</h4>
+                    <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                      Business Insights
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                        Descriptive Analytics
+                      </span>
+                    </h4>
                     <ul className="space-y-2">
                       {analysisData?.analysis?.insights && analysisData.analysis.insights.length > 0 ? (
                         analysisData.analysis.insights.map((insight, index) => (
@@ -710,7 +715,12 @@ const AnalyticsDashboard = ({ analysisId, analysisData, onRefresh, onExport, onS
                     </ul>
                   </div>
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Recommendations</h4>
+                    <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                      Recommendations
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
+                        Prescriptive Analytics
+                      </span>
+                    </h4>
                     <ul className="space-y-2">
                       {analysisData?.analysis?.recommendations && analysisData.analysis.recommendations.length > 0 ? (
                         analysisData.analysis.recommendations.map((recommendation, index) => (

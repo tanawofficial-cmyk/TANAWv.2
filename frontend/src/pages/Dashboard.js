@@ -2444,6 +2444,9 @@ const UserDashboard = () => {
                                   <div className="mb-4 p-4 bg-white rounded-lg border border-purple-100">
                                     <h7 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                       🎯 What This Means for Your Business
+                                      <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                                        Descriptive Analytics
+                                      </span>
                                     </h7>
                                     <p className="text-gray-700 text-sm leading-relaxed">
                                       {chart.narrative_insights.personalized_insights}
@@ -2456,6 +2459,9 @@ const UserDashboard = () => {
                                   <div className="mb-4 p-4 bg-white rounded-lg border border-green-100">
                                     <h7 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                       🚀 My Recommendations
+                                      <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
+                                        Prescriptive Analytics
+                                      </span>
                                     </h7>
                                     <p className="text-gray-700 text-sm leading-relaxed">
                                       {chart.narrative_insights.actionable_advice}
