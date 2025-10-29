@@ -943,6 +943,10 @@ class TANAWBarChartGenerator:
                 ]
                 
                 for col in df.columns:
+                    # Skip if already in available_cols (prevent duplicates)
+                    if col in available_cols:
+                        continue
+                    
                     col_lower = col.lower().replace(" ", "_").replace("-", "_")
                     if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
                            for candidate in stock_candidates):
@@ -951,9 +955,22 @@ class TANAWBarChartGenerator:
                             numeric_data = pd.to_numeric(df[col], errors='coerce')
                             if numeric_data.notna().sum() / len(df) >= 0.5:
                                 available_cols.append(col)
+                                print(f"✅ Found stock column: {col}")
                                 break
                         except:
                             continue
+                
+                # CRITICAL FIX: Deduplicate available columns
+                unique_cols = []
+                seen = set()
+                for col in available_cols:
+                    if col not in seen:
+                        unique_cols.append(col)
+                        seen.add(col)
+                
+                if len(unique_cols) != len(available_cols):
+                    print(f"🔧 Deduplicated columns: {available_cols} → {unique_cols}")
+                    available_cols = unique_cols
                 
                 ready = len(available_cols) >= 2
                 missing_cols = [] if ready else ["Item column", "Stock column"]
@@ -1016,6 +1033,10 @@ class TANAWBarChartGenerator:
                 ]
                 
                 for col in df.columns:
+                    # Skip if already in available_cols (prevent duplicates)
+                    if col in available_cols:
+                        continue
+                    
                     col_lower = col.lower().replace(" ", "_").replace("-", "_")
                     if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
                            for candidate in stock_candidates):
@@ -1023,6 +1044,7 @@ class TANAWBarChartGenerator:
                             numeric_data = pd.to_numeric(df[col], errors='coerce')
                             if numeric_data.notna().sum() / len(df) >= 0.5:
                                 available_cols.append(col)
+                                print(f"✅ Found stock column: {col}")
                                 break
                         except:
                             continue
@@ -1034,6 +1056,10 @@ class TANAWBarChartGenerator:
                 ]
                 
                 for col in df.columns:
+                    # Skip if already in available_cols (prevent duplicates)
+                    if col in available_cols:
+                        continue
+                    
                     col_lower = col.lower().replace(" ", "_").replace("-", "_")
                     if any(candidate.lower().replace(" ", "_") in col_lower or col_lower in candidate.lower().replace(" ", "_") 
                            for candidate in reorder_candidates):
@@ -1041,9 +1067,22 @@ class TANAWBarChartGenerator:
                             numeric_data = pd.to_numeric(df[col], errors='coerce')
                             if numeric_data.notna().sum() / len(df) >= 0.5:
                                 available_cols.append(col)
+                                print(f"✅ Found reorder column: {col}")
                                 break
                         except:
                             continue
+                
+                # CRITICAL FIX: Deduplicate available columns
+                unique_cols = []
+                seen = set()
+                for col in available_cols:
+                    if col not in seen:
+                        unique_cols.append(col)
+                        seen.add(col)
+                
+                if len(unique_cols) != len(available_cols):
+                    print(f"🔧 Deduplicated columns: {available_cols} → {unique_cols}")
+                    available_cols = unique_cols
                 
                 ready = len(available_cols) >= 2  # At minimum need item + stock
                 missing_cols = [] if ready else ["Item column", "Stock column"]
@@ -1575,11 +1614,10 @@ class TANAWBarChartGenerator:
             
         except Exception as e:
             print(f"❌ Error generating Stock Level Overview chart: {e}")
-            # Try fallback methods
-            return self.fallback_handler.handle_bar_chart_fallback(
-                df, "stock_level_overview", self.generate_stock_level_overview,
-                item_col=item_col, stock_col=stock_col
-            )
+            import traceback
+            print(f"📍 Traceback: {traceback.format_exc()}")
+            # Don't call fallback - it causes infinite recursion
+            return None
     
     def generate_reorder_status(self, df: pd.DataFrame, item_col: str, stock_col: str, reorder_col: str = None) -> Optional[Dict[str, Any]]:
         """
@@ -1723,11 +1761,10 @@ class TANAWBarChartGenerator:
             
         except Exception as e:
             print(f"❌ Error generating Reorder Status chart: {e}")
-            # Try fallback methods
-            return self.fallback_handler.handle_bar_chart_fallback(
-                df, "reorder_status", self.generate_reorder_status,
-                item_col=item_col, stock_col=stock_col, reorder_col=reorder_col
-            )
+            import traceback
+            print(f"📍 Traceback: {traceback.format_exc()}")
+            # Don't call fallback - it causes infinite recursion
+            return None
     
     def _safe_generate_chart(self, chart_type: str, df: pd.DataFrame, col1: str, col2: str, col3: str = None) -> Optional[Dict[str, Any]]:
         """

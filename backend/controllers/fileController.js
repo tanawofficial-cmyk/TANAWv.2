@@ -3,6 +3,7 @@
 import Dataset from "../models/Dataset.js";
 import Analytics from "../models/Analytics.js";
 import ApiUsage from "../models/ApiUsage.js";
+import User from "../models/User.js";
 import XLSX from "xlsx";
 import axios from "axios";
 import FormData from "form-data";
@@ -65,7 +66,26 @@ const uploadFile = async (req, res) => {
       console.error("❌ Flask service error:", flaskErr.message);
       if (flaskErr.response) {
         console.error("Flask error response:", flaskErr.response.data);
+        
+        // If Flask returned 422 with helpful error data, pass it through
+        if (flaskErr.response.status === 422 && flaskErr.response.data) {
+          const flaskErrorData = flaskErr.response.data;
+          console.log("📊 Flask 422 error with data - passing through to frontend");
+          
+          return res.status(422).json({
+            success: false,
+            message: flaskErrorData.message || "Unable to generate analytics from dataset",
+            fallback_reason: flaskErrorData.fallback_reason,
+            suggestion: flaskErrorData.suggestion,
+            detected_domain: flaskErrorData.detected_domain,
+            detected_columns: flaskErrorData.detected_columns,
+            mapped_types: flaskErrorData.mapped_types,
+            ...flaskErrorData // Pass through all Flask error data
+          });
+        }
       }
+      
+      // For other errors, return 500
       return res.status(500).json({
         success: false,
         message: "Flask analytics service error",
@@ -210,7 +230,14 @@ const uploadFile = async (req, res) => {
     }
 
     // 📊 Track chart generation analytics
-    const charts = flaskData.analysis?.charts || [];
+    console.log('🔍 DEBUG: Checking for charts in Flask response...');
+    console.log('🔍 flaskData.analysis?.charts:', flaskData.analysis?.charts);
+    console.log('🔍 flaskData.visualization?.charts:', flaskData.visualization?.charts);
+    
+    // Try multiple possible locations for charts
+    const charts = flaskData.analysis?.charts || flaskData.visualization?.charts || [];
+    console.log(`🔍 Found ${charts.length} charts to track`);
+    
     if (charts.length > 0) {
       try {
         // Track each chart generation as a separate event
@@ -230,12 +257,13 @@ const uploadFile = async (req, res) => {
         console.log(`📊 Tracked ${charts.length} chart generation events`);
         
         // 📊 Update user's charts generated count
-        await User.findByIdAndUpdate(
+        const updatedUser = await User.findByIdAndUpdate(
           req.user.id,
           { $inc: { chartsGenerated: charts.length } },
           { new: true }
         );
         console.log(`✅ Updated user ${req.user.id} charts generated count (+${charts.length})`);
+        console.log(`✅ User now has ${updatedUser.chartsGenerated} total charts`);
         
         // 📊 Log additional API usage for chart generation
         const chartTokens = charts.length * 200; // Estimate tokens per chart
@@ -477,6 +505,28 @@ const uploadClean = async (req, res) => {
       });
     } catch (flaskErr) {
       console.error("❌ Flask service error:", flaskErr.message);
+      if (flaskErr.response) {
+        console.error("Flask error response:", flaskErr.response.data);
+        
+        // If Flask returned 422 with helpful error data, pass it through
+        if (flaskErr.response.status === 422 && flaskErr.response.data) {
+          const flaskErrorData = flaskErr.response.data;
+          console.log("📊 Flask 422 error with data - passing through to frontend");
+          
+          return res.status(422).json({
+            success: false,
+            message: flaskErrorData.message || "Unable to generate analytics from dataset",
+            fallback_reason: flaskErrorData.fallback_reason,
+            suggestion: flaskErrorData.suggestion,
+            detected_domain: flaskErrorData.detected_domain,
+            detected_columns: flaskErrorData.detected_columns,
+            mapped_types: flaskErrorData.mapped_types,
+            ...flaskErrorData // Pass through all Flask error data
+          });
+        }
+      }
+      
+      // For other errors, return 500
       return res.status(500).json({
         success: false,
         message: "Flask analytics service error",
@@ -596,20 +646,30 @@ const uploadClean = async (req, res) => {
     }
 
     // 📊 Track chart generation and update user's charts count
-    const charts = flaskData.analysis?.charts || [];
+    console.log('🔍 DEBUG: Checking for charts in Flask response (uploadClean)...');
+    console.log('🔍 flaskData.analysis?.charts:', flaskData.analysis?.charts);
+    console.log('🔍 flaskData.visualization?.charts:', flaskData.visualization?.charts);
+    
+    // Try multiple possible locations for charts
+    const charts = flaskData.analysis?.charts || flaskData.visualization?.charts || [];
+    console.log(`🔍 Found ${charts.length} charts to track`);
+    
     if (charts.length > 0) {
       try {
         // Update user's charts generated count
-        await User.findByIdAndUpdate(
+        const updatedUser = await User.findByIdAndUpdate(
           req.user.id,
           { $inc: { chartsGenerated: charts.length } },
           { new: true }
         );
         console.log(`✅ Updated user ${req.user.id} charts generated count (+${charts.length})`);
+        console.log(`✅ User now has ${updatedUser.chartsGenerated} total charts`);
       } catch (chartUpdateError) {
         console.error('Failed to update user charts count:', chartUpdateError);
         // Don't fail the upload if chart count update fails
       }
+    } else {
+      console.log('⚠️ No charts found in Flask response - charts count NOT updated');
     }
 
     // === Return Flask response with MongoDB dataset ID ===

@@ -216,7 +216,7 @@ class RobustFileParser:
         )
     
     def _parse_excel(self, file_path: Path) -> ParseResult:
-        """Parse Excel file with sheet selection."""
+        """Parse Excel file with sheet selection and intelligent header detection."""
         try:
             # Try openpyxl first (for .xlsx)
             if file_path.suffix.lower() in ['.xlsx', '.xlsm']:
@@ -255,6 +255,10 @@ class RobustFileParser:
                     sheet_name = list(df.keys())[0]
                     df = df[sheet_name]
                     print(f"📊 Using first sheet '{sheet_name}'")
+            
+            # 🧠 INTELLIGENT HEADER DETECTION
+            # Detect if first row is a title row (like "DAILY INVENTORY" or "WEEKLY REPORT")
+            df = self._detect_and_fix_title_row(df, file_path)
             
             # Handle merged header rows
             df = self._flatten_headers(df)
@@ -324,6 +328,61 @@ class RobustFileParser:
             return df
         except Exception as e:
             print(f"⚠️ Header flattening failed: {e}")
+            return df
+    
+    def _detect_and_fix_title_row(self, df: pd.DataFrame, file_path: Path) -> pd.DataFrame:
+        """
+        Intelligently detect and fix title rows in Excel files.
+        
+        Common scenario: Excel files have a title in row 1 (e.g., "DAILY INVENTORY"),
+        and actual column headers in row 2 (e.g., "Item Name", "Stock", "Unit").
+        
+        Detection strategy:
+        1. Count "Unnamed:" columns (indicates pandas couldn't find proper headers)
+        2. If > 50% columns are unnamed, row 1 is likely a title row
+        3. Re-parse with skiprows=1 and validate improvement
+        """
+        try:
+            # Count unnamed columns
+            unnamed_count = sum(1 for col in df.columns if str(col).startswith('Unnamed:'))
+            total_cols = len(df.columns)
+            unnamed_ratio = unnamed_count / total_cols if total_cols > 0 else 0
+            
+            print(f"🔍 Header Quality Check: {unnamed_count}/{total_cols} unnamed columns ({unnamed_ratio*100:.1f}%)")
+            
+            # If more than 50% columns are unnamed, likely a title row issue
+            if unnamed_ratio > 0.5 and total_cols >= 3:
+                print(f"⚠️ Detected title row issue - {unnamed_ratio*100:.0f}% unnamed columns")
+                print(f"🔧 Attempting to re-parse with skiprows=1...")
+                
+                # Re-parse the file skipping the first row
+                engine = 'openpyxl' if file_path.suffix.lower() in ['.xlsx', '.xlsm'] else 'xlrd'
+                df_retry = pd.read_excel(file_path, engine=engine, skiprows=1)
+                
+                # Validate the retry result
+                unnamed_count_retry = sum(1 for col in df_retry.columns if str(col).startswith('Unnamed:'))
+                total_cols_retry = len(df_retry.columns)
+                unnamed_ratio_retry = unnamed_count_retry / total_cols_retry if total_cols_retry > 0 else 0
+                
+                print(f"🔍 Retry Result: {unnamed_count_retry}/{total_cols_retry} unnamed columns ({unnamed_ratio_retry*100:.1f}%)")
+                
+                # Use retry if it improved the header quality
+                if unnamed_ratio_retry < unnamed_ratio:
+                    improvement = (unnamed_ratio - unnamed_ratio_retry) * 100
+                    print(f"✅ Title row detected and skipped! Header quality improved by {improvement:.1f}%")
+                    print(f"📋 Old headers: {list(df.columns)[:5]}...")
+                    print(f"📋 New headers: {list(df_retry.columns)[:5]}...")
+                    return df_retry
+                else:
+                    print(f"ℹ️ Retry didn't improve headers, using original")
+                    return df
+            else:
+                print(f"✅ Headers look good ({unnamed_ratio*100:.0f}% unnamed)")
+                return df
+                
+        except Exception as e:
+            print(f"⚠️ Title row detection failed: {e}")
+            print(f"📊 Continuing with original DataFrame")
             return df
     
     def _profile_data(self, df: pd.DataFrame) -> DataProfile:
