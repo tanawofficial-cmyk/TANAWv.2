@@ -28,19 +28,35 @@ const corsOptions = {
     // List of allowed origins
     const allowedOrigins = [
       'http://localhost:3000', // Local development
+      'https://localhost:3000', // Local development HTTPS
       process.env.FRONTEND_URL, // Production Hostinger URL
+      'https://tanawanalytics.com', // Explicit production domain
+      'https://www.tanawanalytics.com', // With www
     ].filter(Boolean); // Remove undefined values
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log('⚠️ CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      // Don't throw error - just reject (iOS compatibility)
+      callback(null, false);
     }
   },
   credentials: true, // Allow cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  maxAge: 86400, // 24 hours - cache preflight for iOS
+  preflightContinue: false,
+  optionsSuccessStatus: 204 // iOS Safari compatibility
 };
 
 // Middleware
