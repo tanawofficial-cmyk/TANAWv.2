@@ -980,21 +980,21 @@ const UserDashboard = () => {
               <!-- Conversational Insights (New Format) -->
               ${insights.conversational_analysis ? `
                 <div style="margin-bottom: 12px; background: #dbeafe; padding: 10px; border-radius: 4px;">
-                  <strong style="color: #1f2937;">💬 What I'm Seeing:</strong>
+                  <strong style="color: #1f2937;">💬 What I'm Seeing: <span style="display: inline-block; margin-left: 8px; padding: 2px 8px; background: #dbeafe; color: #1e40af; font-size: 11px; border-radius: 12px; font-weight: 500;">Descriptive Analytics</span></strong>
                   <p style="color: #4b5563; margin-top: 5px; font-style: italic;">"${insights.conversational_analysis}"</p>
                 </div>
               ` : ''}
               
               ${insights.personalized_insights ? `
                 <div style="margin-bottom: 12px; background: #f3e8ff; padding: 10px; border-radius: 4px;">
-                  <strong style="color: #1f2937;">🎯 What This Means for Your Business:</strong>
+                  <strong style="color: #1f2937;">🎯 What This Means for Your Business: <span style="display: inline-block; margin-left: 8px; padding: 2px 8px; background: #dbeafe; color: #1e40af; font-size: 11px; border-radius: 12px; font-weight: 500;">Descriptive Analytics</span></strong>
                   <p style="color: #4b5563; margin-top: 5px;">${insights.personalized_insights}</p>
                 </div>
               ` : ''}
               
               ${insights.actionable_advice ? `
                 <div style="margin-bottom: 12px; background: #dcfce7; padding: 10px; border-radius: 4px;">
-                  <strong style="color: #1f2937;">🚀 My Recommendations:</strong>
+                  <strong style="color: #1f2937;">🚀 My Recommendations: <span style="display: inline-block; margin-left: 8px; padding: 2px 8px; background: #dcfce7; color: #166534; font-size: 11px; border-radius: 12px; font-weight: 500;">Prescriptive Analytics</span></strong>
                   <p style="color: #4b5563; margin-top: 5px;">${insights.actionable_advice}</p>
                 </div>
               ` : ''}
@@ -2432,6 +2432,9 @@ const UserDashboard = () => {
                                   <div className="mb-4 p-4 bg-white rounded-lg border border-blue-100">
                                     <h7 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                       💬 What I'm Seeing
+                                      <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                                        Descriptive Analytics
+                                      </span>
                                     </h7>
                                     <p className="text-gray-700 text-sm leading-relaxed italic">
                                       "{chart.narrative_insights.conversational_analysis}"
