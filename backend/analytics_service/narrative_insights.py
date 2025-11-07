@@ -24,6 +24,7 @@ class TANAWNarrativeInsights:
         self.model = "gpt-4o-mini"  # Cost-effective model for narrative generation
         self.batch_size = 3  # Process 3 charts per batch
         self.max_retries = 3
+        self.feedback_enhancements = None  # Store feedback-based prompt enhancements
     
     def generate_batch_insights(self, charts_data: List[Dict[str, Any]], domain: str = "sales") -> Dict[str, Any]:
         """
@@ -243,68 +244,63 @@ class TANAWNarrativeInsights:
                 else:
                     raise e
     
+    def set_feedback_enhancements(self, enhancements: Optional[Dict] = None):
+        """
+        Set feedback-based prompt enhancements (Adaptive Learning Feature)
+        This allows the system to learn from user feedback and improve recommendations
+        
+        Args:
+            enhancements: Dict with enhancement instructions from feedback analysis
+        """
+        self.feedback_enhancements = enhancements
+        if enhancements:
+            print(f"🧠 Adaptive Learning: Applied {len(enhancements.get('enhancements', []))} feedback-based enhancements")
+    
     def _create_batch_prompt(self, batch: List[Dict], domain: str) -> str:
-        """Create enhanced prompt for intelligent business recommendations"""
+        """Create prompt for business insights - Original defense format"""
         charts_json = json.dumps(batch, separators=(',', ':'))
         
-        return f"""You are a senior business consultant and analytics expert for TANAW, an SME analytics platform. Analyze each chart using the provided detailed data and generate intelligent, actionable business insights with specific recommendations.
+        base_prompt = f"""You are a senior business analyst for TANAW, an SME analytics platform. Analyze each chart and provide clear, actionable insights.
 
-For each chart, provide:
+For each chart, provide THREE sections:
 
-1. **BUSINESS DESCRIPTION**: What the chart reveals about business performance with specific data points
-2. **STRATEGIC INSIGHT**: Key business implications and what this means for the organization
-3. **ACTIONABLE RECOMMENDATIONS**: Specific, implementable strategies with timelines and expected outcomes
-4. **RISK ASSESSMENT**: Potential risks or opportunities identified
-5. **SUCCESS METRICS**: How to measure the impact of recommended actions
-
-Chart-Specific Analysis Guidelines:
-
-**SALES CHARTS:**
-- Product Performance: Identify top/bottom performers, market concentration, pricing strategies
-- Regional Sales: Geographic performance, market expansion opportunities, resource allocation
-- Sales Trends: Growth patterns, seasonality, forecasting accuracy
-- Sales Forecast: Future revenue projections, capacity planning, goal setting
-
-**INVENTORY CHARTS:**
-- Stock Levels: Inventory optimization, reorder points, storage costs
-- Turnover Analysis: Cash flow implications, dead stock identification, supplier relationships
-- Reorder Status: Supply chain efficiency, stockout prevention, cost optimization
-- Stock Forecast: Demand planning, procurement strategies, working capital management
-
-**FINANCE CHARTS:**
-- Revenue Analysis: Income diversification, pricing optimization, market penetration
-- Expense Distribution: Cost control opportunities, budget allocation, efficiency improvements
-- Profit Margins: Pricing strategies, cost reduction, profitability enhancement
-- Cash Flow: Working capital management, investment opportunities, financial planning
+1. **WHAT I SEE**: What the data shows - specific numbers, trends, and patterns
+2. **MY RECOMMENDATION**: Clear, actionable business recommendations  
+3. **POTENTIAL IMPACT**: Expected outcomes and benefits of following the recommendations
 
 Requirements:
 - Use EXACT data points, names, and values from the dataset
-- Calculate specific percentages and ratios
-- Provide concrete, implementable recommendations
-- Include timelines (immediate, short-term, long-term)
-- Reference specific products, regions, or metrics
-- Consider SME context and resource constraints
-- Focus on actionable insights that drive business growth
+- Be specific and concise
+- Focus on actionable insights for SMEs
+- Reference actual products, values, and metrics from the data"""
+
+        # 🧠 ADAPTIVE LEARNING: Add feedback-based enhancements
+        if self.feedback_enhancements and self.feedback_enhancements.get('enhancements'):
+            base_prompt += "\n\n🎯 **USER FEEDBACK-INFORMED GUIDELINES** (Based on what users found valuable):\n"
+            
+            for enhancement in self.feedback_enhancements['enhancements']:
+                priority_emoji = "🔴" if enhancement['priority'] == 'high' else "🟡" if enhancement['priority'] == 'medium' else "🟢"
+                base_prompt += f"{priority_emoji} {enhancement['instruction']}\n"
+            
+            base_prompt += f"\nConfidence Level: {self.feedback_enhancements.get('confidence', 0):.0%} (based on {self.feedback_enhancements.get('feedbackCount', 0)} user feedback entries)\n"
+        
+        base_prompt += """
 
 Return ONLY JSON in this exact format:
 [
   {{
     "chart_id": "...",
-    "business_description": "Specific analysis of what the chart shows with actual data points",
-    "strategic_insight": "Key business implications and organizational impact",
-    "actionable_recommendations": [
-      "Immediate action (0-30 days): Specific recommendation with expected outcome",
-      "Short-term strategy (1-3 months): Detailed plan with success metrics",
-      "Long-term opportunity (3-12 months): Strategic initiative with ROI projection"
-    ],
-    "risk_assessment": "Potential risks or opportunities identified",
-    "success_metrics": "How to measure the impact of recommendations",
+    "what_i_see": "Specific analysis with actual data points and trends",
+    "my_recommendation": "Clear, actionable recommendations for business improvement",
+    "potential_impact": "Expected outcomes and business benefits",
     "confidence": 0.0-1.0
   }}
 ]
 
 Charts:
 {charts_json}"""
+        
+        return base_prompt
     
     def _parse_batch_response(self, response_text: str, batch: List[Dict]) -> Dict[str, Any]:
         """Parse enhanced GPT batch response with business recommendations"""
@@ -324,33 +320,29 @@ Charts:
             
             insights = json.loads(response_text)
             
-            # Convert to enhanced dict format
+            # Convert to defense format dict
             result = {}
             for insight in insights:
                 chart_id = insight.get('chart_id')
                 if chart_id:
-                    # Extract all enhanced fields
-                    business_description = insight.get('business_description', '')
-                    strategic_insight = insight.get('strategic_insight', '')
-                    actionable_recommendations = insight.get('actionable_recommendations', [])
-                    risk_assessment = insight.get('risk_assessment', '')
-                    success_metrics = insight.get('success_metrics', '')
+                    # Extract the three main sections (Defense format)
+                    what_i_see = insight.get('what_i_see', '')
+                    my_recommendation = insight.get('my_recommendation', '')
+                    potential_impact = insight.get('potential_impact', '')
                     confidence = insight.get('confidence', 0.8)
                     
-                    # Create comprehensive insights structure
+                    # Create insights structure with defense format
                     result[chart_id] = {
                         'chart_title': batch[0].get('title', 'Analytics Chart') if batch else 'Chart',
                         'domain': 'sales',  # Could be enhanced to detect domain
-                        'business_description': business_description,
-                        'strategic_insight': strategic_insight,
-                        'actionable_recommendations': actionable_recommendations,
-                        'risk_assessment': risk_assessment,
-                        'success_metrics': success_metrics,
-                        'insights': f"{business_description} {strategic_insight}",  # Combined for backward compatibility
-                        'key_points': actionable_recommendations[:3],  # Top 3 recommendations as key points
+                        'what_i_see': what_i_see,
+                        'my_recommendation': my_recommendation,
+                        'potential_impact': potential_impact,
+                        'insights': f"{what_i_see} {my_recommendation}",  # Combined for backward compatibility
+                        'key_points': [my_recommendation, potential_impact],  # Key recommendations
                         'confidence': confidence,
                         'generated_at': datetime.now().isoformat(),
-                        'insight_type': 'enhanced_business_recommendations'
+                        'insight_type': 'defense_format'
                     }
             
             return result
@@ -648,24 +640,17 @@ Write as a strategic business advisor speaking to a busy business owner who need
         }
     
     def _get_enhanced_fallback_insights(self, chart_title: str, domain: str) -> Dict[str, Any]:
-        """Enhanced fallback insights with business recommendations"""
+        """Fallback insights with defense format"""
         return {
             "chart_title": chart_title,
             "domain": domain,
-            "business_description": f"This {chart_title} provides valuable insights into your {domain} performance and business operations.",
-            "strategic_insight": f"The data reveals key patterns in your {domain} that can inform strategic decision-making and operational improvements.",
-            "actionable_recommendations": [
-                f"Immediate action (0-30 days): Analyze the data patterns in this {chart_title} to identify immediate opportunities",
-                f"Short-term strategy (1-3 months): Develop a monitoring system for these {domain} metrics with weekly reviews",
-                f"Long-term opportunity (3-12 months): Use this data to inform strategic planning and resource allocation decisions"
-            ],
-            "risk_assessment": f"Monitor these {domain} metrics regularly to identify potential risks or opportunities early.",
-            "success_metrics": f"Track improvements in {domain} performance over time and measure the impact of data-driven decisions.",
+            "what_i_see": f"This {chart_title} provides valuable insights into your {domain} performance and business operations.",
+            "my_recommendation": f"Analyze the data patterns to identify opportunities and develop a monitoring system for these {domain} metrics.",
+            "potential_impact": f"Regular monitoring of {domain} metrics helps identify opportunities and risks early, leading to better informed business decisions.",
             "insights": f"This {chart_title} shows important {domain} metrics for your business. Review the data points to identify trends and patterns.",
             "key_points": [
-                f"Use this {chart_title} data to make informed business decisions",
-                f"Regular monitoring of {domain} metrics helps identify opportunities",
-                f"Consider professional consultation for deeper strategic analysis"
+                f"Analyze data patterns for opportunities",
+                f"Monitor {domain} metrics regularly"
             ],
             "confidence": 0.6,
             "generated_at": datetime.now().isoformat(),
