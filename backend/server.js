@@ -14,6 +14,8 @@ import adminRoutes from "./routes/adminRoute.js";
 import connectivityRoutes from "./routes/connectivityRoute.js";
 import contactRoutes from "./routes/contactRoute.js";
 import migrationRoutes from "./routes/migrationRoute.js";
+import adaptiveLearningRoutes from "./routes/adaptiveLearning.js";
+import forecastAccuracyRoutes from "./routes/forecastAccuracy.js";
 
 dotenv.config();
 
@@ -87,6 +89,8 @@ app.use("/api/feedback", feedbackRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/admin/connectivity", connectivityRoutes);
 app.use("/api/admin/migrate", migrationRoutes);
+app.use("/api/adaptive-learning", adaptiveLearningRoutes);
+app.use("/api/forecast-accuracy", forecastAccuracyRoutes);
 
 // Connect MongoDB
 mongoose

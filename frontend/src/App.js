@@ -7,6 +7,7 @@ import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
+import AdaptiveLearning from "./pages/AdaptiveLearning";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import DocumentationPage from "./pages/DocumentationPage";
@@ -34,6 +35,8 @@ function App() {
 
         {/* User Dashboard */}
         <Route path="/userDashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/adaptive-learning" element={<AdaptiveLearning />} />
 
         {/* Admin Dashboard - Protected Routes */}
         <Route path="/admin-dashboard" element={

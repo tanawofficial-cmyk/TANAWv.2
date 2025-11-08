@@ -61,6 +61,10 @@ const UserDashboard = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [uploadCount, setUploadCount] = useState(0);
 
+  // 🎯 Manual Mode state
+  const [generationMode, setGenerationMode] = useState('auto'); // 'auto' or 'manual'
+  const [selectedCategory, setSelectedCategory] = useState(''); // 'sales', 'inventory', 'finance', 'customer', 'product'
+
   // 🔝 Back to top function
   const scrollToTop = () => {
     window.scrollTo({
@@ -121,10 +125,11 @@ const UserDashboard = () => {
     // Load user profile from API
     api.get("/users/me", { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
-        console.log("✅ User profile loaded:", { email: res.email, role: res.role });
+        const userData = res?.data || res;
+        console.log("✅ User profile loaded:", { email: userData?.email, role: userData?.role });
         
         // CRITICAL: Double-check role from API response
-        if (res.role === "admin") {
+        if (userData?.role === "admin") {
           console.log("⚠️ API returned admin role! Clearing session and redirecting...");
           localStorage.clear();
           toast.error("Admin accounts cannot access the user dashboard. Please use the admin dashboard.");
@@ -132,11 +137,15 @@ const UserDashboard = () => {
           return;
         }
         
-        setUser(res);
+        setUser(userData);
+        if (userData) {
+          localStorage.setItem("user", JSON.stringify(userData));
+        }
         // Set the user ID in analytics service for proper tracking
-        if (res.id || res._id) {
-          analytics.setUserId(res.id || res._id);
-          console.log("📊 Analytics user ID set to:", res.id || res._id);
+        if (userData?.id || userData?._id) {
+          const analyticsId = userData.id || userData._id;
+          analytics.setUserId(analyticsId);
+          console.log("📊 Analytics user ID set to:", analyticsId);
         }
         // Load user's datasets after user is loaded
         loadUserDatasets();
@@ -238,7 +247,9 @@ const UserDashboard = () => {
             suggestedAnalytics: dataset.suggestedAnalytics,
             status: dataset.status,
             visualizationData: dataset.visualizationData || [],
-            analysisData: dataset.analysisData
+            analysisData: dataset.analysisData,
+            generationMode: dataset.generationMode || 'auto',
+            selectedCategory: dataset.selectedCategory || null
           };
         });
         
@@ -348,17 +359,27 @@ const UserDashboard = () => {
     
     if (!selectedFile) return toast.error("⚠️ Please select a file first.");
 
+    // Validate manual mode selection
+    if (generationMode === 'manual' && !selectedCategory) {
+      return toast.error("⚠️ Please select an analytics category for manual mode.");
+    }
+
     const token = localStorage.getItem("token");
     if (!token) return toast.error("❌ Please log in to upload.");
 
     const formData = new FormData();
     formData.append("file", selectedFile);
+    formData.append("generationMode", generationMode);
+    if (generationMode === 'manual' && selectedCategory) {
+      formData.append("selectedCategory", selectedCategory);
+    }
 
     try {
       setIsUploading(true);
       setUploading(true);
 
       console.log("📤 Uploading file to backend...");
+      console.log(`🎯 Mode: ${generationMode}${generationMode === 'manual' ? `, Category: ${selectedCategory}` : ''}`);
 
       const res = await api.post("/files/upload-clean", formData, {
         headers: {
@@ -656,7 +677,7 @@ const UserDashboard = () => {
     
     const filtered = datasets.filter(dataset => {
       // Search filter - search in name and fileName
-      const matchesSearch = !searchTerm || 
+                                    const matchesSearch = !searchTerm || 
         dataset.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         dataset.fileName?.toLowerCase().includes(searchTerm.toLowerCase());
       
@@ -1924,7 +1945,7 @@ const UserDashboard = () => {
                         <span className="hidden sm:inline">Charts:</span> {dataset.analysisData?.analysis?.charts?.length || dataset.visualizationData?.length || 0}
                     </div>
                   </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                   <span className={`px-2 py-0.5 sm:py-1 text-xs rounded ${
                     dataset.status === 'completed'
                       ? 'bg-green-100 text-green-800'
@@ -1932,6 +1953,24 @@ const UserDashboard = () => {
                   }`}>
                     {dataset.status}
                   </span>
+                  {/* 🎯 Generation Mode Badge */}
+                  <span className={`px-2 py-0.5 sm:py-1 text-xs rounded ${
+                    dataset.generationMode === 'manual'
+                      ? 'bg-purple-100 text-purple-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`} title={dataset.generationMode === 'manual' ? 'Manual Mode' : 'Auto Mode'}>
+                    {dataset.generationMode === 'manual' ? '✋ Manual' : '🤖 Auto'}
+                  </span>
+                  {/* 📊 Category Badge (Manual Mode Only) */}
+                  {dataset.generationMode === 'manual' && dataset.selectedCategory && (
+                    <span className="px-2 py-0.5 sm:py-1 text-xs rounded bg-blue-100 text-blue-800" title={`Category: ${dataset.selectedCategory}`}>
+                      {dataset.selectedCategory === 'sales' && '💰 Sales'}
+                      {dataset.selectedCategory === 'inventory' && '📦 Inventory'}
+                      {dataset.selectedCategory === 'finance' && '💵 Finance'}
+                      {dataset.selectedCategory === 'customer' && '👥 Customer'}
+                      {dataset.selectedCategory === 'product' && '📦 Product'}
+                    </span>
+                  )}
                       <button
                         onClick={() => handleShowAnalytics(dataset)}
                         disabled={(uploading || isUploading) && !dataset.analysisData}
@@ -2324,6 +2363,43 @@ const UserDashboard = () => {
                   {/* Visualizations */}
                   {charts.length > 0 && (
                     <div className="mt-6">
+                      {/* 🧠 Adaptive Learning Tips Banner */}
+                      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4 mb-6">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl flex-shrink-0">💡</span>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-800 mb-2">
+                              📊 Help Improve These Forecasts!
+                            </h4>
+                            <p className="text-sm text-gray-600 mb-3">
+                              If you see forecast charts (Sales Forecast, Quantity Forecast, etc.), you can help make them more accurate:
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                              <div className="bg-white rounded-lg p-3 border border-purple-100">
+                                <p className="font-medium text-purple-700 mb-1">1️⃣ Wait 30 Days</p>
+                                <p className="text-xs text-gray-600">Let the forecast period pass</p>
+                              </div>
+                              <div className="bg-white rounded-lg p-3 border border-purple-100">
+                                <p className="font-medium text-purple-700 mb-1">2️⃣ Enter Actual Value</p>
+                                <p className="text-xs text-gray-600">Visit Adaptive Learning page</p>
+                              </div>
+                              <div className="bg-white rounded-lg p-3 border border-purple-100">
+                                <p className="font-medium text-purple-700 mb-1">3️⃣ Get Better Forecasts</p>
+                                <p className="text-xs text-gray-600">AI learns your business!</p>
+                              </div>
+                            </div>
+                            <div className="mt-3">
+                              <button
+                                onClick={() => window.location.href = '/adaptive-learning'}
+                                className="text-sm text-purple-700 hover:text-purple-900 font-medium"
+                              >
+                                🧠 Go to Adaptive Learning →
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3">
                         <div className="flex items-center gap-3 sm:gap-4">
                           <h4 className="text-base sm:text-lg font-semibold text-gray-800">
@@ -2415,6 +2491,7 @@ const UserDashboard = () => {
                             })}
                             
                             {/* Conversational Business Insights */}
+                            {console.log('🔍 Chart narrative_insights:', chart.narrative_insights)}
                             {chart.narrative_insights ? (
                               <div className="mb-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-500 shadow-lg">
                                 <div className="flex items-center gap-2 mb-4">
@@ -2430,12 +2507,12 @@ const UserDashboard = () => {
                                 {/* Conversational Analysis */}
                                 {chart.narrative_insights.conversational_analysis && (
                                   <div className="mb-4 p-4 bg-white rounded-lg border border-blue-100">
-                                    <h7 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                    <div className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                       💬 What I'm Seeing
                                       <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
                                         Descriptive Analytics
                                       </span>
-                                    </h7>
+                                    </div>
                                     <p className="text-gray-700 text-sm leading-relaxed italic">
                                       "{chart.narrative_insights.conversational_analysis}"
                                     </p>
@@ -2445,12 +2522,12 @@ const UserDashboard = () => {
                                 {/* Personalized Insights */}
                                 {chart.narrative_insights.personalized_insights && (
                                   <div className="mb-4 p-4 bg-white rounded-lg border border-purple-100">
-                                    <h7 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                    <div className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                       🎯 What This Means for Your Business
                                       <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
                                         Descriptive Analytics
                                       </span>
-                                    </h7>
+                                    </div>
                                     <p className="text-gray-700 text-sm leading-relaxed">
                                       {chart.narrative_insights.personalized_insights}
                                     </p>
@@ -2460,12 +2537,12 @@ const UserDashboard = () => {
                                 {/* Actionable Advice */}
                                 {chart.narrative_insights.actionable_advice && (
                                   <div className="mb-4 p-4 bg-white rounded-lg border border-green-100">
-                                    <h7 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                    <div className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                       🚀 My Recommendations
                                       <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
                                         Prescriptive Analytics
                                       </span>
-                                    </h7>
+                                    </div>
                                     <p className="text-gray-700 text-sm leading-relaxed">
                                       {chart.narrative_insights.actionable_advice}
                                     </p>
@@ -2475,9 +2552,9 @@ const UserDashboard = () => {
                                 {/* Business Impact */}
                                 {chart.narrative_insights.business_impact && (
                                   <div className="mb-4 p-4 bg-white rounded-lg border border-teal-100">
-                                    <h7 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                    <div className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                       📈 Potential Impact
-                                    </h7>
+                                    </div>
                                     <p className="text-gray-700 text-sm leading-relaxed">
                                       {chart.narrative_insights.business_impact}
                                     </p>
@@ -2487,9 +2564,9 @@ const UserDashboard = () => {
                                 {/* Legacy Support - Fallback to old format */}
                                 {!chart.narrative_insights.conversational_analysis && chart.narrative_insights.business_description && (
                                   <div className="mb-4 p-3 bg-white rounded-lg border border-blue-100">
-                                    <h7 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                                    <div className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                                       📊 Business Analysis
-                                    </h7>
+                                    </div>
                                     <p className="text-gray-700 text-sm leading-relaxed">
                                       {chart.narrative_insights.business_description}
                                     </p>
@@ -2499,9 +2576,9 @@ const UserDashboard = () => {
                                 {/* Legacy Strategic Insight */}
                                 {!chart.narrative_insights.conversational_analysis && chart.narrative_insights.strategic_insight && (
                                   <div className="mb-4 p-3 bg-white rounded-lg border border-purple-100">
-                                    <h7 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                                    <div className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                                       🎯 Strategic Insight
-                                    </h7>
+                                    </div>
                                     <p className="text-gray-700 text-sm leading-relaxed">
                                       {chart.narrative_insights.strategic_insight}
                                     </p>
@@ -2511,9 +2588,9 @@ const UserDashboard = () => {
                                 {/* Legacy Actionable Recommendations */}
                                 {!chart.narrative_insights.conversational_analysis && chart.narrative_insights.actionable_recommendations && chart.narrative_insights.actionable_recommendations.length > 0 && (
                                   <div className="mb-4 p-3 bg-white rounded-lg border border-green-100">
-                                    <h7 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                    <div className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                                       🚀 Actionable Recommendations
-                                    </h7>
+                                    </div>
                                     <div className="space-y-2">
                                       {chart.narrative_insights.actionable_recommendations.map((recommendation, recIndex) => (
                                         <div key={recIndex} className="flex items-start gap-3 p-2 bg-gray-50 rounded">
@@ -2532,9 +2609,9 @@ const UserDashboard = () => {
                                 {/* Legacy Support - Fallback to old format */}
                                 {!chart.narrative_insights.business_description && chart.narrative_insights.insights && (
                                   <div className="mb-4 p-3 bg-white rounded-lg border border-blue-100">
-                                    <h7 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                                    <div className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                                       💡 AI Insights
-                                    </h7>
+                                    </div>
                                     <p className="text-gray-700 text-sm leading-relaxed mb-3">
                                       {chart.narrative_insights.insights}
                                     </p>
@@ -2898,6 +2975,30 @@ const UserDashboard = () => {
 
         {/* 📤 Upload Section - Always at the top */}
         <main className="flex-1 mb-8">
+          {/* 🧠 Adaptive Learning Info Banner */}
+          <div className="bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-4 mb-4 shadow-sm">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="text-3xl flex-shrink-0">🧠</span>
+                <div>
+                  <h3 className="font-bold text-gray-800 mb-1">
+                    Help TANAW Learn & Improve!
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Track your forecast accuracy and get better predictions over time. 
+                    The more you contribute, the smarter TANAW becomes for your business!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => window.location.href = '/adaptive-learning'}
+                className="flex-shrink-0 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition shadow-md font-medium whitespace-nowrap"
+              >
+                🧠 Adaptive Learning →
+              </button>
+            </div>
+          </div>
+
           <div className="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-200">
             <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
               📤 Upload New Dataset
@@ -2905,6 +3006,76 @@ const UserDashboard = () => {
             
             {/* Upload - Responsive */}
             <div className="flex flex-col items-center justify-center py-8 sm:py-10 md:py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center px-4">
+              
+              {/* 🎯 Mode Selection */}
+              <div className="mb-6 w-full max-w-md">
+                <label className="block text-sm font-medium text-gray-700 mb-2 text-left">
+                  🎯 Chart Generation Mode
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGenerationMode('auto');
+                      setSelectedCategory('');
+                    }}
+                    className={`flex-1 px-4 py-2 rounded-lg border-2 transition ${
+                      generationMode === 'auto'
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                    }`}
+                  >
+                    🤖 Auto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenerationMode('manual')}
+                    className={`flex-1 px-4 py-2 rounded-lg border-2 transition ${
+                      generationMode === 'manual'
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                    }`}
+                  >
+                    ✋ Manual
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2 text-left">
+                  {generationMode === 'auto' 
+                    ? '✨ System will automatically detect and generate relevant charts' 
+                    : '🎨 You choose which type of analytics to generate'}
+                </p>
+              </div>
+
+              {/* 📊 Category Selection (Manual Mode Only) */}
+              {generationMode === 'manual' && (
+                <div className="mb-6 w-full max-w-md">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 text-left">
+                    📊 Select Analytics Category
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none"
+                  >
+                    <option value="">-- Choose Category --</option>
+                    <option value="sales">💰 Sales Analytics</option>
+                    <option value="inventory">📦 Inventory Analytics</option>
+                    <option value="finance">💵 Finance Analytics</option>
+                    <option value="customer">👥 Customer Analytics</option>
+                    <option value="product">📦 Product Analytics</option>
+                  </select>
+                  {selectedCategory && (
+                    <p className="text-xs text-gray-600 mt-2 text-left bg-blue-50 p-2 rounded border border-blue-200">
+                      {selectedCategory === 'sales' && '📈 Will generate: Revenue trends, top products, regional performance'}
+                      {selectedCategory === 'inventory' && '📦 Will generate: Stock levels, reorder alerts, inventory turnover'}
+                      {selectedCategory === 'finance' && '💰 Will generate: Cash flow, expenses, profit margins'}
+                      {selectedCategory === 'customer' && '👥 Will generate: Customer segments, purchase patterns, retention'}
+                      {selectedCategory === 'product' && '📦 Will generate: Product performance, comparisons, trends'}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="mb-4 w-full max-w-md">
                 <input 
                   type="file" 

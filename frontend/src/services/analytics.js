@@ -17,7 +17,7 @@ class AnalyticsService {
           return user.id;
         }
       } catch (e) {
-        console.warn('Failed to parse user data from localStorage');
+        // Silently handle - fallback to analytics user ID below
       }
     }
     

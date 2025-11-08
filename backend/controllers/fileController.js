@@ -4,6 +4,7 @@ import Dataset from "../models/Dataset.js";
 import Analytics from "../models/Analytics.js";
 import ApiUsage from "../models/ApiUsage.js";
 import User from "../models/User.js";
+import ForecastAccuracy from "../models/ForecastAccuracy.js";
 import XLSX from "xlsx";
 import axios from "axios";
 import FormData from "form-data";
@@ -47,6 +48,8 @@ const uploadFile = async (req, res) => {
     // === Send file to Flask analytics microservice ===
     const formData = new FormData();
     formData.append("file", fs.createReadStream(req.file.path));
+    // Pass userId for forecast tracking
+    formData.append("userId", req.user.id.toString());
 
     let flaskRes;
     try {
@@ -482,6 +485,7 @@ const uploadClean = async (req, res) => {
     console.log("📂 Incoming upload-clean...");
     console.log("req.file:", req.file);
     console.log("req.user:", req.user);
+    console.log("req.body:", req.body); // Log request body for debugging
 
     if (!req.file) {
       return res.status(400).json({ success: false, message: "⚠️ No file uploaded" });
@@ -494,9 +498,24 @@ const uploadClean = async (req, res) => {
       });
     }
 
+    // 🎯 Extract generation mode and category from request
+    const generationMode = req.body.generationMode || 'auto'; // Default to 'auto'
+    const selectedCategory = req.body.selectedCategory || '';
+    
+    console.log(`🎯 Generation Mode: ${generationMode}`);
+    if (generationMode === 'manual' && selectedCategory) {
+      console.log(`📊 Selected Category: ${selectedCategory}`);
+    }
+
     // === Send file to Flask analytics microservice ===
     const formData = new FormData();
     formData.append("file", fs.createReadStream(req.file.path));
+    formData.append("generationMode", generationMode);
+    if (selectedCategory) {
+      formData.append("selectedCategory", selectedCategory);
+    }
+    // Pass userId for forecast tracking
+    formData.append("userId", req.user.id.toString());
 
     let flaskRes;
     try {
@@ -607,10 +626,42 @@ const uploadClean = async (req, res) => {
       // ✅ Store analysis results from Flask
       analysisData: flaskData.analysis || null,
       visualizationData: flaskData.analysis?.charts || [],
+      // 🎯 Store generation mode and category
+      generationMode: generationMode,
+      selectedCategory: selectedCategory || null,
     });
 
     await dataset.save();
     console.log(`✅ Saved dataset ${dataset._id} to MongoDB`);
+
+    // 🧠 ADAPTIVE LEARNING: Link forecast records to this dataset
+    try {
+      // Update forecasts created in the last 2 minutes for this user that don't have a datasetId
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+      const updateResult = await ForecastAccuracy.updateMany(
+        {
+          userId: req.user.id,
+          $or: [
+            { datasetId: { $exists: false } },
+            { datasetId: null },
+            { datasetId: '' }
+          ],
+          createdAt: { $gte: twoMinutesAgo }
+        },
+        {
+          $set: {
+            datasetId: dataset._id
+          }
+        }
+      );
+      
+      if (updateResult.modifiedCount > 0) {
+        console.log(`✅ Linked ${updateResult.modifiedCount} forecast record(s) to dataset ${dataset._id}`);
+      }
+    } catch (forecastLinkError) {
+      console.error('⚠️ Failed to link forecasts to dataset:', forecastLinkError);
+      // Don't fail the upload if forecast linking fails
+    }
 
     // 📊 Update user's dataset count
     try {
@@ -677,6 +728,8 @@ const uploadClean = async (req, res) => {
       ...flaskData, // Return all Flask data
       datasetId: dataset._id, // Add MongoDB dataset ID
       mongoId: dataset._id, // Alternative field name
+      generationMode: generationMode, // 🎯 Include generation mode
+      selectedCategory: selectedCategory || null, // 🎯 Include selected category
     };
 
     console.log("🚀 Sending response to frontend:", responsePayload);
@@ -796,7 +849,10 @@ const getUserDatasets = async (req, res) => {
       status: dataset.status,
       // ✅ Include actual analysis data from database
       visualizationData: dataset.visualizationData || [],
-      analysisData: dataset.analysisData || null
+      analysisData: dataset.analysisData || null,
+      // 🎯 Include generation mode and category
+      generationMode: dataset.generationMode || 'auto',
+      selectedCategory: dataset.selectedCategory || null
     }));
 
     return res.json({

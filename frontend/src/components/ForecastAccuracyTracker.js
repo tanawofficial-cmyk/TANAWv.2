@@ -6,11 +6,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import toast from 'react-hot-toast';
-
-// API base URL - Node.js backend (runs on port 5000)
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const ForecastAccuracyTracker = () => {
   const [pendingForecasts, setPendingForecasts] = useState([]);
@@ -38,20 +35,20 @@ const ForecastAccuracyTracker = () => {
         return;
       }
 
-      console.log('Fetching pending forecasts from:', `${API_BASE}/api/forecast-accuracy/pending`);
+      console.log('Fetching pending forecasts from /forecast-accuracy/pending');
       
-      const response = await axios.get(
-        `${API_BASE}/api/forecast-accuracy/pending`,
+      const response = await api.get(
+        "/forecast-accuracy/pending",
         {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000 // 10 second timeout
         }
       );
 
-      console.log('Pending forecasts response:', response.data);
+      console.log('Pending forecasts response:', response);
 
-      if (response.data.success) {
-        const forecasts = response.data.data.forecasts || [];
+      if (response.success) {
+        const forecasts = response.data?.forecasts || [];
         setPendingForecasts(forecasts);
         console.log(`✅ Loaded ${forecasts.length} pending forecast(s)`);
       } else {
@@ -94,8 +91,8 @@ const ForecastAccuracyTracker = () => {
       setSubmitting(true);
       const token = localStorage.getItem('token');
 
-      const response = await axios.post(
-        `${API_BASE}/api/forecast-accuracy/submit-actual`,
+      const response = await api.post(
+        "/forecast-accuracy/submit-actual",
         {
           forecastId: selectedForecast._id,
           actualValue: parseFloat(actualValue),
@@ -106,10 +103,11 @@ const ForecastAccuracyTracker = () => {
         }
       );
 
-      if (response.data.success) {
-        const accuracy = response.data.data.accuracy;
+      if (response.success) {
+        const accuracy = response.data?.accuracy;
+        const hasAccuracy = typeof accuracy === 'number' && !Number.isNaN(accuracy);
         toast.success(
-          `✅ Actual value submitted! Accuracy: ${accuracy.toFixed(1)}%`,
+          `✅ Actual value submitted! Accuracy: ${hasAccuracy ? accuracy.toFixed(1) : 'N/A'}%`,
           { autoClose: 5000 }
         );
 
@@ -138,14 +136,14 @@ const ForecastAccuracyTracker = () => {
       setDeleting(forecastId);
       const token = localStorage.getItem('token');
 
-      const response = await axios.delete(
-        `${API_BASE}/api/forecast-accuracy/${forecastId}`,
+      const response = await api.delete(
+        `/forecast-accuracy/${forecastId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
 
-      if (response.data.success) {
+      if (response.success) {
         toast.success('🗑️ Forecast deleted successfully');
         fetchPendingForecasts(); // Refresh list
       }

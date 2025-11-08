@@ -178,6 +178,55 @@ class TANAWSalesForecastGenerator:
                     "description": "Sales forecast requires numeric sales column"
                 }
             
+            # 📦 Check for Quantity column (NEW!) - For quantity forecasts
+            quantity_col = None
+            
+            # Check for Quantity in mapping
+            if hasattr(self, 'column_mapping') and self.column_mapping:
+                for original_col, canonical_type in self.column_mapping.items():
+                    if canonical_type == "Quantity" and original_col in df.columns:
+                        try:
+                            numeric_data = pd.to_numeric(df[original_col], errors='coerce')
+                            if numeric_data.notna().sum() / len(df) >= 0.5:
+                                quantity_col = original_col
+                                available_cols.append(quantity_col)
+                                print(f"✅ Using mapped Quantity column: {original_col}")
+                                break
+                        except:
+                            pass
+            
+            # Check for canonical "Quantity" column
+            if not quantity_col and "Quantity" in df.columns:
+                try:
+                    numeric_data = pd.to_numeric(df["Quantity"], errors='coerce')
+                    if numeric_data.notna().sum() / len(df) >= 0.5:
+                        quantity_col = "Quantity"
+                        available_cols.append(quantity_col)
+                        print(f"✅ Using canonical Quantity column")
+                except:
+                    pass
+            
+            # Flexible search for Quantity
+            if not quantity_col:
+                quantity_candidates = ["Quantity", "Qty", "Units", "Demand", "Volume", "Quantity_Sold", "Units_Sold"]
+                for col in df.columns:
+                    col_lower = col.lower().replace(" ", "_").replace("-", "_")
+                    if any(candidate.lower().replace(" ", "_") in col_lower for candidate in quantity_candidates):
+                        try:
+                            numeric_data = pd.to_numeric(df[col], errors='coerce')
+                            if numeric_data.notna().sum() / len(df) >= 0.5:
+                                quantity_col = col
+                                available_cols.append(col)
+                                print(f"✅ Found quantity column via flexible search: {col}")
+                                break
+                        except:
+                            continue
+            
+            if quantity_col:
+                print(f"✅ Quantity column detected: {quantity_col} - Will generate Quantity Forecast")
+            else:
+                print(f"⏭️ No Quantity column detected - Only Sales Forecast will be generated")
+            
             # Check if we have enough data points for forecasting
             min_data_points = 10
             if len(df) < min_data_points:
@@ -476,9 +525,184 @@ class TANAWSalesForecastGenerator:
                 "y_label": "Sales"
             }
     
+    def generate_quantity_forecast(self, df: pd.DataFrame, date_col: str, quantity_col: str) -> Dict[str, Any]:
+        """
+        Generate quantity/demand forecast chart using Prophet
+        
+        Args:
+            df: DataFrame with quantity data
+            date_col: Name of date column
+            quantity_col: Name of quantity column
+            
+        Returns:
+            Dictionary with forecast chart data
+        """
+        try:
+            # Prepare data
+            forecast_df = df.copy()
+            
+            # Parse dates
+            forecast_df[date_col] = pd.to_datetime(forecast_df[date_col], errors='coerce')
+            forecast_df = forecast_df.dropna(subset=[date_col, quantity_col])
+            
+            # Convert quantity to numeric
+            forecast_df[quantity_col] = pd.to_numeric(forecast_df[quantity_col], errors='coerce')
+            forecast_df = forecast_df.dropna(subset=[quantity_col])
+            
+            if len(forecast_df) < 10:  # Prophet needs more data
+                raise ValueError("Insufficient data for Prophet forecasting (minimum 10 data points)")
+            
+            # Aggregate by date (sum quantity per day)
+            daily_quantity = forecast_df.groupby(date_col)[quantity_col].sum().reset_index()
+            daily_quantity = daily_quantity.sort_values(date_col)
+            
+            if PROPHET_AVAILABLE:
+                # Use Prophet for advanced forecasting
+                return self._generate_prophet_quantity_forecast(daily_quantity, date_col, quantity_col)
+            else:
+                # Fallback to linear regression
+                return self._generate_linear_quantity_forecast(daily_quantity, date_col, quantity_col)
+                
+        except Exception as e:
+            print(f"❌ Error generating quantity forecast: {e}")
+            return None
+    
+    def _generate_prophet_quantity_forecast(self, daily_quantity: pd.DataFrame, date_col: str, quantity_col: str) -> Dict[str, Any]:
+        """Generate quantity forecast using Prophet"""
+        try:
+            # Prepare data for Prophet
+            prophet_data = daily_quantity.rename(columns={date_col: 'ds', quantity_col: 'y'})
+            
+            # Initialize Prophet
+            model = Prophet(**self.prophet_config)
+            model.fit(prophet_data)
+            
+            # Create future dataframe
+            future = model.make_future_dataframe(periods=self.forecast_periods)
+            forecast = model.predict(future)
+            
+            # Extract historical and forecast data
+            historical_data = []
+            forecast_data = []
+            
+            for i, row in prophet_data.iterrows():
+                historical_data.append({
+                    "x": row['ds'].strftime('%Y-%m-%d'),
+                    "y": float(row['y']),
+                    "type": "historical"
+                })
+            
+            forecast_rows = forecast.tail(self.forecast_periods)
+            for _, row in forecast_rows.iterrows():
+                forecast_data.append({
+                    "x": row['ds'].strftime('%Y-%m-%d'),
+                    "y": float(row['yhat']),
+                    "upper": float(row['yhat_upper']),
+                    "lower": float(row['yhat_lower']),
+                    "type": "forecast"
+                })
+            
+            chart_data = historical_data + forecast_data
+            
+            # Smart labeling
+            quantity_col_lower = quantity_col.lower()
+            if "demand" in quantity_col_lower:
+                title = "Demand Forecast"
+                y_label = "Demand (Units)"
+            elif "units" in quantity_col_lower:
+                title = "Units Forecast"
+                y_label = "Units"
+            else:
+                title = "Quantity Forecast"
+                y_label = "Quantity (Units)"
+            
+            return {
+                "id": f"quantity_forecast_{quantity_col}",
+                "title": title,
+                "type": "line_forecast",
+                "description": f"Predicted {y_label.lower()} trends for the next {self.forecast_periods} days",
+                "category": "product",  # Changed from "sales" to "product"
+                "icon": "📦",
+                "data": {
+                    "x": [item["x"] for item in chart_data],
+                    "y": [item["y"] for item in chart_data],
+                    "forecast_line": len(historical_data),
+                    "upper_bound": [item.get("upper", item["y"]) for item in chart_data],
+                    "lower_bound": [item.get("lower", item["y"]) for item in chart_data],
+                },
+                "config": {
+                    "x_label": "Date",
+                    "y_label": y_label,
+                    "show_legend": True,
+                    "show_grid": True,
+                    "forecast_periods": self.forecast_periods
+                },
+                "status": "success"
+            }
+        except Exception as e:
+            print(f"❌ Prophet quantity forecast failed: {e}")
+            return None
+    
+    def _generate_linear_quantity_forecast(self, daily_quantity: pd.DataFrame, date_col: str, quantity_col: str) -> Dict[str, Any]:
+        """Fallback linear regression for quantity forecast"""
+        try:
+            # Convert dates to numeric
+            daily_quantity['date_numeric'] = (daily_quantity[date_col] - daily_quantity[date_col].min()).dt.days
+            
+            # Fit linear model
+            from numpy.polynomial import Polynomial
+            p = Polynomial.fit(daily_quantity['date_numeric'], daily_quantity[quantity_col], 1)
+            
+            # Generate forecast
+            future_days = np.arange(len(daily_quantity), len(daily_quantity) + self.forecast_periods)
+            future_quantity = p(future_days)
+            
+            # Create chart data
+            historical_data = []
+            for _, row in daily_quantity.iterrows():
+                historical_data.append({
+                    "x": row[date_col].strftime('%Y-%m-%d'),
+                    "y": float(row[quantity_col])
+                })
+            
+            last_date = daily_quantity[date_col].max()
+            forecast_data = []
+            for i, qty in enumerate(future_quantity):
+                future_date = last_date + timedelta(days=i+1)
+                forecast_data.append({
+                    "x": future_date.strftime('%Y-%m-%d'),
+                    "y": float(max(0, qty))  # Quantity can't be negative
+                })
+            
+            chart_data = historical_data + forecast_data
+            
+            return {
+                "id": f"quantity_forecast_{quantity_col}",
+                "title": "Quantity Forecast",
+                "type": "line_forecast",
+                "description": f"Predicted quantity trends (linear model)",
+                "category": "product",  # Changed from "sales" to "product"
+                "icon": "📦",
+                "data": {
+                    "x": [item["x"] for item in chart_data],
+                    "y": [item["y"] for item in chart_data],
+                    "forecast_line": len(historical_data)
+                },
+                "config": {
+                    "x_label": "Date",
+                    "y_label": "Quantity (Units)",
+                    "show_legend": True,
+                    "show_grid": True
+                },
+                "status": "success"
+            }
+        except Exception as e:
+            print(f"❌ Linear quantity forecast failed: {e}")
+            return None
+    
     def generate_all_sales_forecasts(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
         """
-        Generate all possible sales forecasts for the dataset
+        Generate all possible sales AND quantity forecasts for the dataset
         
         Args:
             df: DataFrame to analyze
@@ -490,15 +714,16 @@ class TANAWSalesForecastGenerator:
         
         try:
             print(f"🔍 Dataset validation: {df.shape[0]} rows, {df.shape[1]} columns")
-            print("🎯 Generating Sales Forecast with predictive analytics")
+            print("🎯 Generating Sales & Quantity Forecasts with predictive analytics")
             
             # Check if forecast can be generated
             forecast_check = self.can_generate_forecast(df)
-            print(f"🔍 Sales Forecast check: {forecast_check}")
+            print(f"🔍 Forecast check: {forecast_check}")
             
             if forecast_check["ready"] and len(forecast_check["available_columns"]) >= 2:
                 date_col = None
                 sales_col = None
+                quantity_col = None
                 
                 # Find date column
                 for col in forecast_check["available_columns"]:
@@ -512,8 +737,15 @@ class TANAWSalesForecastGenerator:
                         sales_col = col
                         break
                 
+                # 📦 Find quantity column (NEW!)
+                for col in forecast_check["available_columns"]:
+                    if any(keyword in col.lower() for keyword in ["quantity", "qty", "units", "demand", "volume"]):
+                        quantity_col = col
+                        break
+                
+                # Generate Sales Forecast
                 if date_col and sales_col:
-                    print(f"📊 Generating forecast: {date_col} vs {sales_col}")
+                    print(f"📊 Generating Sales forecast: {date_col} vs {sales_col}")
                     forecast = self.generate_sales_forecast(df, date_col, sales_col)
                     if forecast:
                         forecasts.append(forecast)
@@ -522,11 +754,24 @@ class TANAWSalesForecastGenerator:
                         print(f"❌ Sales Forecast generation failed")
                 else:
                     print(f"⏭️ Sales Forecast not available: missing date or sales column")
+                
+                # 📦 Generate Quantity Forecast (NEW!)
+                if date_col and quantity_col:
+                    print(f"📦 Generating Quantity forecast: {date_col} vs {quantity_col}")
+                    quantity_forecast = self.generate_quantity_forecast(df, date_col, quantity_col)
+                    if quantity_forecast:
+                        forecasts.append(quantity_forecast)
+                        print(f"✅ Generated Quantity Forecast")
+                    else:
+                        print(f"❌ Quantity Forecast generation failed")
+                else:
+                    print(f"⏭️ Quantity Forecast not available: missing date or quantity column")
+                    
             else:
-                print(f"⏭️ Sales Forecast not available: {forecast_check.get('missing_columns', [])}")
+                print(f"⏭️ Forecasts not available: {forecast_check.get('missing_columns', [])}")
                 
         except Exception as e:
-            print(f"❌ Error in sales forecast generation: {e}")
+            print(f"❌ Error in forecast generation: {e}")
         
-        print(f"📊 Generated {len(forecasts)} sales forecasts total")
+        print(f"📊 Generated {len(forecasts)} total forecasts (sales + quantity)")
         return forecasts

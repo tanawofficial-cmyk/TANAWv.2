@@ -30,6 +30,7 @@ from customer_analytics import TANAWCustomerAnalytics
 from narrative_insights import TANAWNarrativeInsights
 from conversational_insights import TANAWConversationalInsights
 from anomaly_detector import TANAWAnomalyDetector
+from forecast_accuracy_tracker import forecast_tracker
 
 # Safe numeric data sanitization to prevent Infinity/NumPy types in JSON
 def sanitize_numeric_data(data):
@@ -838,11 +839,14 @@ class TANAWDataProcessor:
             }
     
     
-    def generate_domain_analytics(self, df: pd.DataFrame, column_mapping: Dict[str, str], domain_classification) -> Dict[str, Any]:
+    def generate_domain_analytics(self, df: pd.DataFrame, column_mapping: Dict[str, str], domain_classification, generation_mode: str = 'auto', selected_category: str = '') -> Dict[str, Any]:
         """Generate domain-specific analytics and charts using the original method."""
         print(f"🎯 TANAW Domain Analytics: {domain_classification.domain.upper()}")
         print(f"🔍 DataFrame shape: {df.shape}")
         print(f"🔍 Domain confidence: {domain_classification.confidence:.2f}")
+        print(f"🎯 Generation Mode: {generation_mode}")
+        if generation_mode == 'manual' and selected_category:
+            print(f"📊 Selected Category: {selected_category}")
         
         try:
             # Clean and transform data using the original method
@@ -964,6 +968,22 @@ class TANAWDataProcessor:
                 else:
                     print("⏭️ No customer indicators - skipping Customer charts")
             
+            # 🎯 Apply Manual Mode Filtering (if enabled)
+            if generation_mode == 'manual' and selected_category:
+                print(f"\n🎯 Applying Manual Mode filtering for category: {selected_category}")
+                print(f"📊 Total charts before filtering: {len(charts)}")
+                
+                # Filter charts based on selected category
+                filtered_charts = self._filter_charts_by_category(charts, selected_category)
+                
+                print(f"📊 Charts after filtering: {len(filtered_charts)}")
+                if len(filtered_charts) > 0:
+                    print(f"✅ Filtered chart types: {[chart.get('title', 'Unknown') for chart in filtered_charts]}")
+                else:
+                    print(f"⚠️ No charts match the selected category: {selected_category}")
+                
+                charts = filtered_charts
+            
             # Create readiness info
             readiness = {
                 "available_analytics": [{"name": chart['title'], "status": "ready"} for chart in charts],
@@ -971,6 +991,9 @@ class TANAWDataProcessor:
                 "ready_count": len(charts),
                 "total_count": len(charts)
             }
+            
+            # 🧠 ADAPTIVE LEARNING: Try to fetch and apply feedback enhancements
+            self._apply_feedback_enhancements(domain)
             
             # Generate conversational insights using batch processing
             if self.conversational_insights and charts:
@@ -1276,6 +1299,142 @@ class TANAWDataProcessor:
                 "success": False,
                 "error": str(e)
             }
+    
+    def _apply_feedback_enhancements(self, domain: str):
+        """
+        Fetch and apply feedback-based prompt enhancements for adaptive learning
+        This is part of Objective 3.3: Adaptive Learning & User Feedback
+        
+        Args:
+            domain: The business domain for context-specific enhancements
+        """
+        try:
+            import requests
+            from config_manager import get_config
+            
+            # Get Node.js backend URL
+            config = get_config()
+            backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
+            
+            print(f"🧠 Adaptive Learning: Fetching feedback patterns for domain: {domain}")
+            
+            # Call Node.js endpoint to get prompt enhancements
+            response = requests.get(
+                f"{backend_url}/api/adaptive-learning/prompt-enhancements",
+                params={"domain": domain},
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('success') and result.get('data'):
+                    enhancements = result['data']
+                    print(f"✅ Fetched {len(enhancements.get('enhancements', []))} feedback-based enhancements")
+                    print(f"   Confidence: {enhancements.get('confidence', 0):.0%}")
+                    
+                    # Apply to both narrative and conversational insights
+                    if self.narrative_insights:
+                        self.narrative_insights.set_feedback_enhancements(enhancements)
+                    if self.conversational_insights:
+                        self.conversational_insights.set_feedback_enhancements(enhancements)
+                    
+                    return True
+                else:
+                    print(f"ℹ️ No feedback enhancements available yet (need more feedback data)")
+                    return False
+            else:
+                if response.status_code == 401:
+                    print(f"ℹ️ Feedback endpoint requires auth - system will use default prompts (this is normal)")
+                else:
+                    print(f"⚠️ Could not fetch feedback enhancements: {response.status_code}")
+                return False
+                
+        except requests.Timeout:
+            print("⚠️ Timeout fetching feedback enhancements (backend not responsive)")
+            return False
+        except requests.RequestException as e:
+            print(f"⚠️ Could not connect to backend for feedback enhancements: {e}")
+            return False
+        except Exception as e:
+            print(f"⚠️ Error applying feedback enhancements: {e}")
+            return False
+    
+    def _filter_charts_by_category(self, charts: List[Dict[str, Any]], category: str) -> List[Dict[str, Any]]:
+        """
+        Filter charts based on selected category.
+        Categories: sales, inventory, finance, customer, product
+        """
+        # Define chart-to-category mapping with multi-tier matching
+        category_mappings = {
+            'sales': {
+                'domain': 'sales',
+                'include_keywords': ['sales forecast', 'sales revenue', 'sales trend', 'sales over time', 'by sales', 'regional sales', 'region distribution by sales', 'product comparison', 'seasonal', 'sales growth'],
+                'exclude_keywords': ['expense', 'profit margin', 'cash flow', 'quantity forecast']
+            },
+            'inventory': {
+                'domain': 'inventory',
+                'include_keywords': ['stock', 'inventory', 'reorder', 'stock forecast', 'inventory turnover'],
+                'exclude_keywords': []
+            },
+            'finance': {
+                'domain': 'finance',
+                'include_keywords': ['revenue and expense', 'profit', 'cash flow', 'margin', 'financial'],
+                'exclude_keywords': []
+            },
+            'customer': {
+                'domain': 'customer',
+                'include_keywords': ['customer', 'segment', 'retention', 'lifetime'],
+                'exclude_keywords': []
+            },
+            'product': {
+                'domain': 'product',
+                'include_keywords': ['product performance', 'product comparison', 'quantity forecast', 'demand forecast', 'units'],
+                'exclude_keywords': []
+            }
+        }
+        
+        if category not in category_mappings:
+            print(f"⚠️ Unknown category: {category}, returning all charts")
+            return charts
+        
+        mapping = category_mappings[category]
+        filtered = []
+        
+        for chart in charts:
+            title = chart.get('title', '').lower()
+            chart_category = chart.get('category', '').lower()
+            domain = chart.get('domain', '').lower()
+            
+            should_include = False
+            match_reason = ""
+            
+            # PRIORITY 1: Check explicit category field
+            if chart_category == category:
+                should_include = True
+                match_reason = f"category='{chart_category}'"
+            
+            # PRIORITY 2: Check domain field
+            elif domain and domain == mapping['domain']:
+                should_include = True
+                match_reason = f"domain='{domain}'"
+            
+            # PRIORITY 3: Keyword matching with exclusions
+            elif any(keyword in title for keyword in mapping['include_keywords']):
+                # Check for exclusion keywords
+                has_exclusion = any(exclude in title for exclude in mapping['exclude_keywords'])
+                if not has_exclusion:
+                    should_include = True
+                    match_reason = "keyword match"
+                else:
+                    match_reason = f"excluded: {[e for e in mapping['exclude_keywords'] if e in title]}"
+            
+            if should_include:
+                filtered.append(chart)
+                print(f"  ✓ Included: {chart.get('title', 'Unknown')} ({match_reason})")
+            else:
+                print(f"  ✗ Excluded: {chart.get('title', 'Unknown')} ({match_reason if match_reason else 'no match'})")
+        
+        return filtered
     
     def _convert_inventory_chart(self, chart) -> Dict[str, Any]:
         """Convert inventory chart to standard format."""
@@ -1973,6 +2132,17 @@ def analyze_clean():
     print("🚀 TANAW Clean Architecture - OpenAI + TANAW Processing")
     
     try:
+        # 🎯 Extract generation mode and category from request
+        generation_mode = request.form.get('generationMode', 'auto')
+        selected_category = request.form.get('selectedCategory', '')
+        user_id = request.form.get('userId', '')  # For forecast tracking
+        
+        print(f"🎯 Generation Mode: {generation_mode}")
+        if generation_mode == 'manual' and selected_category:
+            print(f"📊 Selected Category: {selected_category}")
+        if user_id:
+            print(f"👤 User ID: {user_id} (for forecast tracking)")
+        
         # Check if file was uploaded
         if 'file' not in request.files:
             return jsonify({
@@ -2141,7 +2311,13 @@ def analyze_clean():
             
             # Generate domain-specific analytics and charts
             print(f"🔍 Starting {domain_classification.domain} analytics and chart generation...")
-            analytics_result = tanaw_processor.generate_domain_analytics(cleaned_df, column_mapping, domain_classification)
+            analytics_result = tanaw_processor.generate_domain_analytics(
+                cleaned_df, 
+                column_mapping, 
+                domain_classification, 
+                generation_mode=generation_mode, 
+                selected_category=selected_category
+            )
             print(f"🔍 Analytics result: {analytics_result}")
             
             # FALLBACK 7: Check if any charts were generated
@@ -2156,6 +2332,36 @@ def analyze_clean():
                     "detected_columns": list(column_mapping.keys()),
                     "mapped_types": list(column_mapping.values())
                 }), 422
+            
+            # 🧠 ADAPTIVE LEARNING: Track forecast charts for accuracy monitoring
+            if user_id:
+                print(f"\n🔮 Tracking forecast charts for user {user_id}...")
+                forecast_count = 0
+                for chart in charts:
+                    chart_type = chart.get('type', '')
+                    # Only track forecast-type charts (line_forecast, stock_forecast, etc.)
+                    if 'forecast' in chart_type.lower():
+                        # Generate a temporary chart ID (will be updated with datasetId after dataset creation)
+                        chart_id = f"temp_{analysis_id}_{forecast_count}"
+                        chart['id'] = chart_id  # Add ID to chart for later linking
+                        
+                        # Track forecast (datasetId will be added later by Node.js)
+                        success = forecast_tracker.track_forecast(
+                            user_id=user_id,
+                            dataset_id='',  # Will be updated after dataset creation
+                            forecast_chart=chart
+                        )
+                        if success:
+                            forecast_count += 1
+                            print(f"  ✅ Tracked forecast: {chart.get('title', 'Unknown')}")
+                        else:
+                            print(f"  ⚠️ Failed to track: {chart.get('title', 'Unknown')}")
+                if forecast_count > 0:
+                    print(f"✅ Successfully tracked {forecast_count} forecast(s) for accuracy monitoring")
+                else:
+                    print(f"ℹ️ No forecast charts found to track")
+            else:
+                print(f"ℹ️ No userId provided - skipping forecast tracking")
             
             # Generate summary metrics
             print(f"🔍 Starting summary metrics calculation...")

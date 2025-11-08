@@ -26,6 +26,9 @@ const DatasetSchema = new mongoose.Schema({
   // ✅ Add analysis results
   analysisData: { type: mongoose.Schema.Types.Mixed, default: null }, // Store full analysis results
   visualizationData: { type: [mongoose.Schema.Types.Mixed], default: [] }, // Store charts
+  // 🎯 Add generation mode and category
+  generationMode: { type: String, enum: ["auto", "manual"], default: "auto" }, // auto or manual mode
+  selectedCategory: { type: String, default: null }, // sales, inventory, finance, customer, product
 });
 
 export default mongoose.model("Dataset", DatasetSchema);

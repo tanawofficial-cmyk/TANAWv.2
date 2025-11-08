@@ -25,11 +25,13 @@ import {
   Cpu,
   Server,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Brain
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import analytics from '../services/analytics';
 import AdminCharts from '../components/AdminCharts';
+import AdminAdaptiveLearning from '../components/AdminAdaptiveLearning';
 import api from '../api';
 
 const AdminDashboard = () => {
@@ -721,6 +723,7 @@ const AdminDashboard = () => {
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'activeUsers', label: 'Active Users', icon: Users },
     { id: 'userFeedback', label: 'User Feedback', icon: MessageSquare },
+    { id: 'adaptiveLearning', label: 'Adaptive Learning', icon: Brain },
     { id: 'connectivity', label: 'Connectivity & Usage', icon: Activity }
   ];
 
@@ -2558,6 +2561,7 @@ const AdminDashboard = () => {
             ) : (
               <>
                 {activeTab === 'overview' && renderOverview()}
+                {activeTab === 'adaptiveLearning' && <AdminAdaptiveLearning />}
                 {activeTab === 'activeUsers' && (
                   <div className="space-y-6">
                     {/* TANAW User Management Header */}
