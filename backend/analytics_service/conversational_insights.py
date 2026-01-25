@@ -318,9 +318,13 @@ class TANAWConversationalInsights:
     
     def _create_conversational_prompt(self, batch: List[Dict], domain: str) -> str:
         """Create conversational prompt for personalized business insights"""
-        # Select random analyst personality
-        personality = random.choice(self.analyst_personalities)
-        starter = random.choice(self.conversation_starters)
+        # Select deterministic analyst personality based on batch content hash
+        import hashlib
+        batch_hash = hashlib.md5(json.dumps(batch, sort_keys=True).encode()).hexdigest()
+        personality_idx = int(batch_hash[:8], 16) % len(self.analyst_personalities)
+        starter_idx = int(batch_hash[8:16], 16) % len(self.conversation_starters)
+        personality = self.analyst_personalities[personality_idx]
+        starter = self.conversation_starters[starter_idx]
         
         charts_json = json.dumps(batch, separators=(',', ':'))
         
@@ -470,7 +474,11 @@ Charts to analyze:
     
     def _create_dashboard_summary_prompt(self, summary_data: Dict, domain: str) -> str:
         """Create conversational dashboard summary prompt"""
-        personality = random.choice(self.analyst_personalities)
+        # Use deterministic selection based on summary data hash
+        import hashlib
+        summary_hash = hashlib.md5(json.dumps(summary_data, sort_keys=True).encode()).hexdigest()
+        personality_idx = int(summary_hash[:8], 16) % len(self.analyst_personalities)
+        personality = self.analyst_personalities[personality_idx]
         
         return f"""You are a {personality} providing a comprehensive business review to a business owner.
 

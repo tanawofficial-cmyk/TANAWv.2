@@ -134,12 +134,33 @@ class TANAWLineChartGenerator:
             
             # Convert date column to datetime
             try:
+                # CRITICAL FIX: Preserve original date values before conversion attempts
+                original_dates = chart_df[date_col].copy()
+                
+                # First try without format (pandas auto-detection)
                 chart_df[date_col] = pd.to_datetime(chart_df[date_col], errors='coerce')
+                initial_valid = chart_df[date_col].notna().sum()
+                initial_failed = len(chart_df) - initial_valid
+                
+                # If more than 30% fail OR if success rate is less than 70%, try DD-MM-YYYY format
+                if initial_failed > len(chart_df) * 0.3 or initial_valid < len(chart_df) * 0.7:
+                    print(f"⚠️ {initial_failed}/{len(chart_df)} dates failed to parse ({initial_failed/len(chart_df)*100:.1f}%), trying DD-MM-YYYY format")
+                    # CRITICAL: Use original date values (not the already-converted ones)
+                    chart_df[date_col] = pd.to_datetime(original_dates, format='%d-%m-%Y', errors='coerce')
+                    # If that still fails, try dayfirst=True as fallback
+                    still_failed = chart_df[date_col].isna().sum()
+                    if still_failed > len(chart_df) * 0.3:
+                        print(f"⚠️ DD-MM-YYYY format still failing ({still_failed} failed), trying dayfirst=True")
+                        chart_df[date_col] = pd.to_datetime(original_dates, dayfirst=True, errors='coerce')
+                
                 chart_df = chart_df.dropna(subset=[date_col])
                 
                 if chart_df.empty:
                     print(f"❌ No valid dates found after conversion")
                     return None
+                
+                print(f"✅ Successfully parsed {len(chart_df)} rows with valid dates")
+                print(f"   Date range: {chart_df[date_col].min()} to {chart_df[date_col].max()}")
                     
             except Exception as e:
                 print(f"❌ Error converting dates: {e}")
@@ -168,15 +189,37 @@ class TANAWLineChartGenerator:
             # Group by date and aggregate (in case of duplicate dates)
             grouped = chart_df.groupby(date_col)[value_col].sum().reset_index()
             
+            # CRITICAL FIX: Ensure we have valid dates before checking length
+            # Convert to datetime if not already (needed for proper date handling)
+            if not pd.api.types.is_datetime64_any_dtype(grouped[date_col]):
+                grouped[date_col] = pd.to_datetime(grouped[date_col], errors='coerce')
+                grouped = grouped.dropna(subset=[date_col])
+            
             # FALLBACK: Handle too many data points (simplify for frontend)
-            if len(grouped) > 365:  # More than 1 year of daily data
-                print(f"⚠️ Too many data points ({len(grouped)}) - sampling for performance")
-                # Resample to weekly or monthly
-                grouped[date_col] = pd.to_datetime(grouped[date_col])
+            # CRITICAL FIX: Only resample if significantly MORE than 1 year (e.g., > 500 days)
+            # This ensures datasets with ~365-400 days stay as daily for accurate comparison with Power BI
+            # Coffee.csv has 381 days - should stay daily, not weekly!
+            if len(grouped) > 500:  # More than ~1.4 years of daily data
+                print(f"⚠️ Too many data points ({len(grouped)}) - resampling to weekly for performance")
+                # Resample to weekly
                 grouped = grouped.set_index(date_col).resample('W')[value_col].sum().reset_index()
+            elif len(grouped) >= 365:
+                print(f"✅ {len(grouped)} days detected (1 year range) - using DAILY aggregation (no resampling)")
+            else:
+                print(f"✅ {len(grouped)} days detected - using DAILY aggregation")
+            
+            # CRITICAL FIX: Ensure dates are datetime before formatting
+            if not pd.api.types.is_datetime64_any_dtype(grouped[date_col]):
+                grouped[date_col] = pd.to_datetime(grouped[date_col], errors='coerce')
+                grouped = grouped.dropna(subset=[date_col])
             
             # Convert dates to ISO format strings for JSON serialization
             grouped[date_col] = grouped[date_col].dt.strftime('%Y-%m-%d')
+            
+            # DEBUG: Log final data point count
+            print(f"📊 Final chart data: {len(grouped)} data points")
+            if len(grouped) > 0:
+                print(f"   Date range: {grouped[date_col].iloc[0]} to {grouped[date_col].iloc[-1]}")
             
             # Generate dynamic labels
             date_label = self._generate_smart_labels(date_col)
@@ -199,6 +242,30 @@ class TANAWLineChartGenerator:
             avg_value = float(grouped[value_col].mean())
             min_value = float(grouped[value_col].min())
             max_value = float(grouped[value_col].max())
+            
+            # CRITICAL FIX: Find the date associated with max and min values
+            max_date_row = grouped.loc[grouped[value_col].idxmax()]
+            min_date_row = grouped.loc[grouped[value_col].idxmin()]
+            max_date = max_date_row[date_col]
+            min_date = min_date_row[date_col]
+            
+            # Ensure dates are in string format for JSON serialization
+            if isinstance(max_date, pd.Timestamp):
+                max_date = max_date.strftime('%Y-%m-%d')
+            elif hasattr(max_date, 'strftime'):
+                max_date = max_date.strftime('%Y-%m-%d')
+            else:
+                max_date = str(max_date)
+                
+            if isinstance(min_date, pd.Timestamp):
+                min_date = min_date.strftime('%Y-%m-%d')
+            elif hasattr(min_date, 'strftime'):
+                min_date = min_date.strftime('%Y-%m-%d')
+            else:
+                min_date = str(min_date)
+            
+            print(f"📈 Peak sales date: {max_date} with value {max_value:,.2f}")
+            print(f"📈 Lowest sales date: {min_date} with value {min_value:,.2f}")
             
             # Calculate trend direction (simple linear trend)
             if len(grouped) >= 2:
@@ -241,6 +308,8 @@ class TANAWLineChartGenerator:
                     "average_value": avg_value,
                     "min_value": min_value,
                     "max_value": max_value,
+                    "max_date": max_date,  # CRITICAL FIX: Date with highest sales
+                    "min_date": min_date,  # CRITICAL FIX: Date with lowest sales
                     "trend": trend,
                     "trend_percentage": float(trend_percentage),
                     "date_column": date_col,
@@ -875,28 +944,46 @@ class TANAWLineChartGenerator:
                 print(f"🔍 Sales Summary readiness check: {sales_summary_check}")
                 
                 if sales_summary_check["ready"] and len(sales_summary_check["available_columns"]) >= 2:
-                    # CRITICAL FIX: Deduplicate available columns to prevent using Date for both axes
+                    # CRITICAL FIX: Explicitly find Date and Sales columns (not just first two)
                     available_cols = sales_summary_check["available_columns"]
-                    unique_cols = []
-                    seen = set()
-                    for col in available_cols:
-                        if col not in seen:
-                            unique_cols.append(col)
-                            seen.add(col)
                     
-                    print(f"🔧 Deduplicated columns: {available_cols} → {unique_cols}")
-                    
-                    if len(unique_cols) >= 2:
-                        date_col = unique_cols[0]  # First unique column (should be Date)
-                        value_col = unique_cols[1]  # Second unique column (should be Sales)
+                    # Find Date column (prioritize canonical "Date", then look for date-like names)
+                    date_col = None
+                    if "Date" in available_cols:
+                        date_col = "Date"
                     else:
-                        # Fallback: try to find Date and Sales explicitly
-                        date_col = next((col for col in unique_cols if 'date' in col.lower()), unique_cols[0])
-                        value_col = next((col for col in unique_cols if col != date_col), None)
-                        
-                        if not value_col:
-                            print(f"❌ Could not find distinct date and value columns")
-                            raise ValueError("Need at least 2 distinct columns for line chart")
+                        # Look for date-like column names
+                        for col in available_cols:
+                            col_lower = str(col).lower()
+                            if any(keyword in col_lower for keyword in ['date', 'datetime', 'time', 'timestamp']):
+                                date_col = col
+                                break
+                    
+                    # Find Sales/Value column (exclude date columns)
+                    value_col = None
+                    sales_keywords = ['sales', 'money', 'amount', 'revenue', 'value', 'total', 'price']
+                    for col in available_cols:
+                        if col == date_col:
+                            continue  # Skip date column
+                        col_lower = str(col).lower()
+                        if any(keyword in col_lower for keyword in sales_keywords):
+                            value_col = col
+                            break
+                    
+                    # If still no value column, take first non-date column
+                    if not value_col:
+                        for col in available_cols:
+                            if col != date_col:
+                                value_col = col
+                                break
+                    
+                    if not date_col or not value_col:
+                        print(f"❌ Could not find distinct date and value columns")
+                        print(f"   Date column: {date_col}, Value column: {value_col}")
+                        print(f"   Available columns: {available_cols}")
+                        raise ValueError("Need distinct Date and Sales columns for line chart")
+                    
+                    print(f"🔧 Selected columns: date_col={date_col}, value_col={value_col}")
                     
                     print(f"🎯 Generating Sales Summary chart with date_col={date_col}, value_col={value_col}")
                     
@@ -917,6 +1004,93 @@ class TANAWLineChartGenerator:
         else:
             print(f"⏭️ Skipping Sales Summary (context={context}, sales chart)")
         
+        # FINANCE CHARTS TEMPORARILY DISABLED
+        # Focusing on Sales & Inventory domains only for semantic detection implementation
+        # TODO: Re-enable Finance charts (Profit Trend, Cash Flow) after smart context detection
+        
+        # Try Inventory Turnover (Inventory Domain) (INVENTORY charts)
+        # SPECIAL HANDLING: Check original column names before GPT mapping
+        if context in ["INVENTORY", "MIXED", "UNKNOWN"]:
+            try:
+                print(f"🔍 Checking for Inventory Turnover with original column names...")
+                print(f"🔍 Column mapping: {self.column_mapping}")
+                
+                # Check if original column names contain turnover-related keywords
+                turnover_original_col = None
+                date_original_col = None
+                
+                turnover_keywords = [
+                    "turnover", "turn_rate", "turnrate", "rotation", "itr", "ito",
+                    "inventory_turn", "inventoryturn", "stock_turn", "stockturn"
+                ]
+                
+                for orig_col, mapped_col in self.column_mapping.items():
+                    orig_lower = str(orig_col).lower().replace(" ", "_").replace("-", "_")
+                    
+                    # Check for turnover column
+                    if any(keyword in orig_lower for keyword in turnover_keywords):
+                        turnover_original_col = mapped_col  # Use the mapped (canonical) column name
+                        print(f"✅ Found turnover column: {orig_col} -> {mapped_col}")
+                    
+                    # Check for date column
+                    if mapped_col == "Date":
+                        date_original_col = mapped_col
+                        print(f"✅ Found date column: {orig_col} -> {mapped_col}")
+                
+                # If we found both in original column names, generate the chart
+                if turnover_original_col and date_original_col:
+                    print(f"🎯 Generating Inventory Turnover from original columns")
+                    print(f"🎯 Date column (canonical): {date_original_col}")
+                    print(f"🎯 Turnover column (canonical): {turnover_original_col}")
+                    
+                    chart = self.generate_inventory_turnover(df, date_original_col, turnover_original_col)
+                    if chart:
+                        charts.append(chart)
+                        print(f"✅ Generated Inventory Turnover chart from original column names")
+                    else:
+                        print(f"❌ Inventory Turnover chart generation failed")
+                else:
+                    print(f"⏭️ Inventory Turnover not available in original column names")
+                    print(f"   - Turnover column found: {turnover_original_col is not None}")
+                    print(f"   - Date column found: {date_original_col is not None}")
+                    
+            except Exception as e:
+                print(f"❌ Error checking Inventory Turnover with original columns: {e}")
+        else:
+            print(f"⏭️ Skipping Inventory Turnover (context={context}, inventory chart)")
+        
+        print(f"📈 Generated {len(charts)} line charts total")
+        return charts
+    
+    def _safe_generate_chart(self, chart_type: str, df: pd.DataFrame, col1: str, col2: str) -> Optional[Dict[str, Any]]:
+        """
+        Safely generate a chart with comprehensive error handling
+        
+        Args:
+            chart_type: Type of chart to generate
+            df: DataFrame to analyze
+            col1: First column name (usually date)
+            col2: Second column name (usually value)
+            
+        Returns:
+            Chart dictionary or None if failed
+        """
+        try:
+            if chart_type == "sales_summary":
+                return self.generate_sales_summary(df, col1, col2)
+            else:
+                print(f"❌ Unknown chart type: {chart_type}")
+                return None
+        except MemoryError:
+            print(f"❌ Memory error generating {chart_type} chart - dataset too large")
+            return None
+        except Exception as e:
+            print(f"❌ Unexpected error generating {chart_type} chart: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+
         # FINANCE CHARTS TEMPORARILY DISABLED
         # Focusing on Sales & Inventory domains only for semantic detection implementation
         # TODO: Re-enable Finance charts (Profit Trend, Cash Flow) after smart context detection

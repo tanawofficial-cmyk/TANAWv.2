@@ -68,7 +68,12 @@ const AnalyticsDisplay = ({ analysisData, analyticsResults, onExport, onShare })
             x: x,
             y: chart.data.y[i],
             date: x, // For time series charts
-            value: chart.data.y[i] // For value charts
+            value: chart.data.y[i], // For value charts
+            // FIXED: Add product and sales fields for ProductPerformanceChart
+            product: x,
+            name: x,
+            sales: chart.data.y[i],
+            amount: chart.data.y[i]
           }));
         }
         
@@ -425,6 +430,11 @@ const AnalyticsDisplay = ({ analysisData, analyticsResults, onExport, onShare })
         </div>
       )}
     </div>
+  );
+};
+
+export default AnalyticsDisplay;
+
   );
 };
 

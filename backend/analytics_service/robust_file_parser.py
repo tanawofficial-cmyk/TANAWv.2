@@ -510,8 +510,10 @@ class RobustFileParser:
             if tail_size > 0:
                 samples.append(df.tail(tail_size))
             
-            # Add random sample
+            # Add random sample (using fixed seed for consistency)
             if random_size > 0:
+                # Use fixed seed to ensure consistent sampling across runs
+                np.random.seed(42)
                 random_indices = np.random.choice(
                     df.index[head_size:-tail_size] if tail_size > 0 else df.index[head_size:],
                     size=min(random_size, len(df) - head_size - tail_size),

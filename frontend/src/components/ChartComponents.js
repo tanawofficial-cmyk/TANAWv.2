@@ -147,8 +147,9 @@ export const ProductPerformanceChart = ({ data, title = "Product Performance", h
     if (!data || !Array.isArray(data)) return [];
     return data.map((item, index) => ({
       ...item,
-      product_name: item.product || item.name || `Product ${index + 1}`,
-      sales_value: parseFloat(item.sales || item.amount || 0),
+      product_name: item.product || item.name || item.x || `Product ${index + 1}`,
+      // FIXED: Check for y and value fields from backend {x, y} format
+      sales_value: parseFloat(item.sales || item.amount || item.y || item.value || 0),
       quantity_value: parseFloat(item.quantity || item.qty || 0),
       color: CHART_COLORS.product[index % CHART_COLORS.product.length]
     }));
@@ -430,3 +431,4 @@ export const ChartComponents = {
 };
 
 export default ChartComponents;
+

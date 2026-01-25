@@ -360,8 +360,16 @@ class TANAWFinanceAnalytics:
             
             if expense_col:
                 # Calculate actual profit and margin
-                df_work['Profit'] = pd.to_numeric(df_work[revenue_col], errors='coerce') - pd.to_numeric(df_work[expense_col], errors='coerce')
-                df_work['Profit_Margin_%'] = (df_work['Profit'] / pd.to_numeric(df_work[revenue_col], errors='coerce')) * 100
+                # FIXED: Prevent division by zero when revenue is 0
+                revenue_numeric = pd.to_numeric(df_work[revenue_col], errors='coerce')
+                expense_numeric = pd.to_numeric(df_work[expense_col], errors='coerce')
+                df_work['Profit'] = revenue_numeric - expense_numeric
+                # Use np.where to handle division by zero
+                df_work['Profit_Margin_%'] = np.where(
+                    revenue_numeric != 0,
+                    (df_work['Profit'] / revenue_numeric) * 100,
+                    0  # Set margin to 0 when revenue is 0
+                )
             else:
                 # Estimate margin without expense data (assume 20% average margin)
                 print("   ⚠️ No expense column - estimating 20% default margin")
@@ -651,8 +659,19 @@ class TANAWFinanceAnalytics:
             actual_data = df.groupby(category_col)[amount_col].sum().reset_index()
             
             # Simulate budget data (in real scenario, this would come from budget system)
-            avg_expense = actual_data[amount_col].mean()
-            actual_data['budget'] = actual_data[amount_col] * np.random.uniform(0.8, 1.2, len(actual_data))
+            # Use deterministic calculation based on category hash for consistency
+            def get_deterministic_budget_multiplier(category_name: str) -> float:
+                """Generate consistent budget multiplier based on category name hash"""
+                import hashlib
+                hash_val = int(hashlib.md5(str(category_name).encode()).hexdigest()[:8], 16)
+                # Map hash to range [0.8, 1.2] deterministically
+                normalized = (hash_val % 1000) / 1000.0  # 0.0 to 0.999
+                return 0.8 + (normalized * 0.4)  # 0.8 to 1.2
+            
+            actual_data['budget'] = actual_data.apply(
+                lambda row: row[amount_col] * get_deterministic_budget_multiplier(row[category_col]),
+                axis=1
+            )
             
             # Calculate variance
             actual_data['variance'] = actual_data[amount_col] - actual_data['budget']
@@ -694,10 +713,26 @@ class TANAWFinanceAnalytics:
             # Calculate profit margins by category
             profit_data = df.groupby(category_col)[amount_col].sum().reset_index()
             
-            # Simulate cost data and calculate margins
-            profit_data['cost'] = profit_data[amount_col] * np.random.uniform(0.6, 0.8, len(profit_data))
+            # Simulate cost data and calculate margins (deterministic based on category)
+            def get_deterministic_cost_multiplier(category_name: str) -> float:
+                """Generate consistent cost multiplier based on category name hash"""
+                import hashlib
+                hash_val = int(hashlib.md5(str(category_name).encode()).hexdigest()[:8], 16)
+                # Map hash to range [0.6, 0.8] deterministically
+                normalized = (hash_val % 1000) / 1000.0  # 0.0 to 0.999
+                return 0.6 + (normalized * 0.2)  # 0.6 to 0.8
+            
+            profit_data['cost'] = profit_data.apply(
+                lambda row: row[amount_col] * get_deterministic_cost_multiplier(row[category_col]),
+                axis=1
+            )
             profit_data['profit'] = profit_data[amount_col] - profit_data['cost']
-            profit_data['margin'] = (profit_data['profit'] / profit_data[amount_col]) * 100
+            # FIXED: Prevent division by zero when amount is 0
+            profit_data['margin'] = np.where(
+                profit_data[amount_col] != 0,
+                (profit_data['profit'] / profit_data[amount_col]) * 100,
+                0  # Set margin to 0 when amount is 0
+            )
             
             profit_data = profit_data.sort_values('margin', ascending=False)
             

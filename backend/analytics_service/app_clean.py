@@ -16,6 +16,11 @@ import uuid
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 import math
+import random
+
+# Set global random seeds for reproducibility and consistent analytics results
+np.random.seed(42)
+random.seed(42)
 
 # Core components - only what we need
 from robust_file_parser import parse_file_robust, ParseResult
@@ -529,7 +534,8 @@ class TANAWDataProcessor:
         for col in df.columns:
             if col == "Date":
                 try:
-                    df[col] = pd.to_datetime(df[col])
+                    # FIXED: Add errors='coerce' to handle invalid dates gracefully
+                    df[col] = pd.to_datetime(df[col], errors='coerce')
                 except:
                     pass
             elif col in ["Sales", "Amount", "Quantity"]:
@@ -543,9 +549,16 @@ class TANAWDataProcessor:
         """Handle missing values intelligently."""
         for col in df.columns:
             if col in ["Sales", "Amount", "Quantity"]:
-                # Fill numeric columns with median
-                median_val = df[col].median()
-                df[col] = df[col].fillna(median_val)
+                # CRITICAL FIX: Don't fill NaN in sales/amount columns with median
+                # This artificially inflates totals. Let the chart generators handle NaN explicitly.
+                # Only convert to numeric (NaN values will be handled by chart generators)
+                try:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                    nan_count = df[col].isna().sum()
+                    if nan_count > 0:
+                        print(f"⚠️ Column {col} has {nan_count} NaN values - will be excluded from aggregations")
+                except:
+                    pass
             elif col in ["Product", "Region"]:
                 # Fill categorical columns with "Unknown"
                 df[col] = df[col].fillna("Unknown")
@@ -1569,14 +1582,12 @@ class TANAWDataProcessor:
     def clean_dataset(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Clean dataset for analytics - handle missing values, data types, etc.
+        FIXED: Only drop rows with missing critical columns, not all missing values.
         """
         try:
             df_clean = df.copy()
             
-            # Handle missing values
-            df_clean = df_clean.dropna()
-            
-            # Convert date columns
+            # Convert date columns FIRST (before dropping rows)
             for col in df_clean.columns:
                 if 'date' in col.lower() or 'time' in col.lower():
                     try:
@@ -1584,13 +1595,27 @@ class TANAWDataProcessor:
                     except:
                         pass
             
-            # Convert numeric columns
+            # Convert numeric columns FIRST (before dropping rows)
             for col in df_clean.columns:
                 if col not in ['Date', 'Product_Name', 'Product', 'Region', 'Sales_Rep']:
                     try:
                         df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
                     except:
                         pass
+            
+            # FIXED: Only drop rows where ALL critical columns are missing
+            # Critical columns: Date, Sales/Amount, Product (if they exist)
+            critical_cols = []
+            for col in ['Date', 'Sales', 'Amount', 'Quantity']:
+                if col in df_clean.columns:
+                    critical_cols.append(col)
+            
+            if critical_cols:
+                # Only drop rows where ALL critical columns are missing
+                df_clean = df_clean.dropna(subset=critical_cols, how='all')
+            else:
+                # If no critical columns, only drop rows where ALL values are missing
+                df_clean = df_clean.dropna(how='all')
             
             print(f"✅ Dataset cleaned: {df_clean.shape}")
             return df_clean
@@ -2170,18 +2195,37 @@ def analyze_clean():
             file.save(tmp_file.name)
             tmp_path = tmp_file.name
         
+        # Parse file to detect encoding/delimiter and get metadata
+        parse_result = parse_file_robust(tmp_path, None)
+        
+        if not parse_result.success:
+            # Clean up and return error
+            import os
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
+            return jsonify({
+                "success": False,
+                "message": parse_result.error_message
+            }), 422
+        
+        # FIXED: Re-read the FULL file for analytics (not the sampled version)
+        # The parse_result.dataframe is sampled to 1000 rows for preview,
+        # but we need ALL rows for accurate analytics calculations
+        print(f"📊 Parse result: {parse_result.row_count} total rows, sampled to {len(parse_result.dataframe)} rows")
+        
         try:
-            # Parse file
-            parse_result = parse_file_robust(tmp_path, None)
+            # Re-read full file with detected encoding and delimiter
+            if Path(tmp_path).suffix.lower() in ['.xlsx', '.xls', '.xlsm']:
+                df = pd.read_excel(tmp_path, engine='openpyxl' if Path(tmp_path).suffix.lower() in ['.xlsx', '.xlsm'] else 'xlrd')
+            else:
+                # Use detected encoding and delimiter from parse result
+                encoding = parse_result.encoding_used or 'utf-8'
+                delimiter = parse_result.delimiter_used or ','
+                df = pd.read_csv(tmp_path, encoding=encoding, sep=delimiter, low_memory=False)
             
-            if not parse_result.success:
-                return jsonify({
-                    "success": False,
-                    "message": parse_result.error_message
-                }), 422
-            
-            df = parse_result.dataframe
-            print(f"✅ File parsed: {parse_result.row_count} rows × {parse_result.col_count} columns")
+            print(f"✅ File parsed: {len(df)} rows × {len(df.columns)} columns (FULL dataset for analytics)")
             
             # FALLBACK 1: Check if DataFrame has any data
             if df.empty or len(df) == 0:

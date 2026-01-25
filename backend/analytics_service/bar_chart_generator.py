@@ -148,7 +148,9 @@ class TANAWBarChartGenerator:
             if nan_ratio > 0.8:  # More than 80% NaN
                 print(f"⚠️ High NaN ratio ({nan_ratio:.2%}) - attempting to clean data")
             
-            chart_df = chart_df.dropna()
+            # CRITICAL FIX: Don't drop ALL NaN rows here - we'll handle NaN in sales_col specifically later
+            # This prevents dropping valid rows that might have NaN in other columns
+            # chart_df = chart_df.dropna()  # REMOVED - too aggressive
             
             if chart_df.empty:
                 print(f"❌ No valid data after cleaning")
@@ -162,7 +164,8 @@ class TANAWBarChartGenerator:
             # Convert sales to numeric with error handling
             try:
                 chart_df[sales_col] = pd.to_numeric(chart_df[sales_col], errors='coerce')
-                chart_df = chart_df.dropna()
+                # CRITICAL FIX: Drop rows where sales_col is NaN (don't include NaN values in sum)
+                chart_df = chart_df.dropna(subset=[sales_col])
                 
                 if chart_df.empty:
                     print(f"❌ No numeric sales data found after conversion")
@@ -179,8 +182,13 @@ class TANAWBarChartGenerator:
             
             # FALLBACK: Handle grouping errors
             try:
-                # Group by product and sum sales
+                # CRITICAL FIX: Group by product and sum sales (NaN values are automatically excluded by sum())
+                # Ensure we're only summing valid numeric values
                 grouped = chart_df.groupby(product_col)[sales_col].sum().reset_index()
+                # Verify no NaN values in grouped result
+                if grouped[sales_col].isna().any():
+                    print(f"⚠️ Warning: Found NaN values in grouped sales, removing them")
+                    grouped = grouped.dropna(subset=[sales_col])
                 
                 if grouped.empty:
                     print(f"❌ Grouping resulted in empty data")
@@ -1794,6 +1802,14 @@ class TANAWBarChartGenerator:
                 return self.generate_reorder_status(df, col1, col2, col3)
             else:
                 print(f"❌ Unknown chart type: {chart_type}")
+                return None
+        except MemoryError:
+            print(f"❌ Memory error generating {chart_type} chart - dataset too large")
+            return None
+        except Exception as e:
+            print(f"❌ Unexpected error generating {chart_type} chart: {e}")
+            return None
+
                 return None
         except MemoryError:
             print(f"❌ Memory error generating {chart_type} chart - dataset too large")
