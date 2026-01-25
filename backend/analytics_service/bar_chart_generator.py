@@ -1809,11 +1809,3 @@ class TANAWBarChartGenerator:
         except Exception as e:
             print(f"❌ Unexpected error generating {chart_type} chart: {e}")
             return None
-
-                return None
-        except MemoryError:
-            print(f"❌ Memory error generating {chart_type} chart - dataset too large")
-            return None
-        except Exception as e:
-            print(f"❌ Unexpected error generating {chart_type} chart: {e}")
-            return None
